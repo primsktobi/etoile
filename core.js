@@ -599,13 +599,42 @@ function startListeners() {
 
   const q = query(collection(db, 'tasks'), where('uid', '==', currentUser.uid));
   tasksUnsub = onSnapshot(q, async snap => {
-    tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    tasks.sort((a, b) => {
-      const ta = a.timestamp?.toMillis?.() || 0;
-      const tb = b.timestamp?.toMillis?.() || 0;
-      return tb - ta;
-    });
-    for (const t of tasks) await idbPut('tasks', t);
+    // ── Fusion Firebase → IDB display ──────────────────────────────────────
+    // Règle : Firebase ne remplace une entrée IDB que si son updatedAt
+    // est strictement plus récent. Cela évite qu'un snapshot Firebase
+    // "en retard" écrase une modification locale faite hors ligne.
+    for (const change of snap.docChanges()) {
+      const fbDoc  = { id: change.doc.id, ...change.doc.data() };
+
+      if (change.type === 'removed') {
+        // Suppression réelle côté Firebase (hard-delete)
+        await idbDelete('tasks', fbDoc.id);
+        tasks = tasks.filter(t => t.id !== fbDoc.id);
+        continue;
+      }
+
+      // Convertit le Timestamp Firebase en ms pour comparaison
+      const fbUpdatedAt = fbDoc.updatedAt?.toMillis?.() ?? fbDoc.updatedAt ?? 0;
+
+      // Cherche la version locale dans IDB
+      const local = await idbGet('tasks', fbDoc.id);
+      const localUpdatedAt = local?.updatedAt ?? 0;
+
+      if (fbUpdatedAt >= localUpdatedAt) {
+        // Firebase est plus récent (ou égal) → on accepte
+        await idbPut('tasks', { ...fbDoc, updatedAt: fbUpdatedAt });
+        // Met à jour le tableau en mémoire
+        const idx = tasks.findIndex(t => t.id === fbDoc.id);
+        const merged = { ...fbDoc, updatedAt: fbUpdatedAt };
+        if (idx >= 0) tasks[idx] = merged;
+        else tasks.push(merged);
+      }
+      // Si local plus récent → on ignore silencieusement ce snapshot pour ce doc
+    }
+
+    tasks.sort((a, b) => (b.timestamp?.toMillis?.() ?? b.timestamp ?? 0)
+                       - (a.timestamp?.toMillis?.() ?? a.timestamp ?? 0));
+
     renderTaskList();
     if (taskViewMode === 'kanban') renderKanbanBoard();
     renderDashboard();
