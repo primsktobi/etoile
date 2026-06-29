@@ -434,17 +434,25 @@ window.doLogout = async () => {
 };
 
 async function purgeLocalDataOnLogout() {
+  // Purge trivo-display : tasks, teams, memos
   const tasksStore = await idbGetAll('tasks');
   for (const t of tasksStore) await idbDelete('tasks', t.id);
 
   const teamsStore = await idbGetAll('teams');
   for (const t of teamsStore) await idbDelete('teams', t.id);
 
-  // musicTracks n'est PAS touché — la musique reste disponible après déconnexion
+  const memosStore = await idbGetAll('memos');
+  for (const m of memosStore) await idbDelete('memos', m.id);
+
+  // Purge trivo-queue : vider toutes les actions en attente
+  const queueStore = await queueGetAll();
+  for (const q of queueStore) await queueDelete(q.id);
+
+  // Prefs liées au compte — pas le thème ni accentColor
   await idbDelete('prefs', 'avatarBase64');
   await idbDelete('prefs', 'settings');
   await idbDelete('prefs', 'myDaySelection');
-  // theme et accentColor sont conservés volontairement
+  // musicTracks, theme et accentColor conservés volontairement
 }
 
 //  User Profile 
