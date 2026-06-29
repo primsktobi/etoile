@@ -65,12 +65,10 @@ async function _processEntry(entry) {
   switch (type) {
 
     case 'create': {
-      // On utilise setDoc avec l'id généré côté client (nanoid stocké dans data.id)
-      // + serverTimestamp pour que Firebase ait son propre timestamp
       await setDoc(doc(db, col, docId), {
         ...firebaseData,
-        updatedAt: serverTimestamp(),
-        timestamp: serverTimestamp()
+        updatedAt: entry.updatedAt,  // timestamp réel de la modification
+        timestamp: entry.updatedAt
       });
       break;
     }
@@ -78,18 +76,16 @@ async function _processEntry(entry) {
     case 'update': {
       await updateDoc(doc(db, col, docId), {
         ...firebaseData,
-        updatedAt: serverTimestamp()
+        updatedAt: entry.updatedAt   // timestamp réel de la modification
       });
       break;
     }
 
     case 'delete': {
-      // Soft-delete côté Firebase : on ne supprime jamais directement,
-      // on pose un flag pour la corbeille 3 jours
       await updateDoc(doc(db, col, docId), {
         status: 'deleted',
-        deletedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        deletedAt: entry.updatedAt,
+        updatedAt: entry.updatedAt
       });
       break;
     }
@@ -98,7 +94,7 @@ async function _processEntry(entry) {
       await updateDoc(doc(db, col, docId), {
         status: 'pending',
         deletedAt: null,
-        updatedAt: serverTimestamp()
+        updatedAt: entry.updatedAt
       });
       break;
     }

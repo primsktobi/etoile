@@ -757,6 +757,8 @@ window.saveTask = async () => {
     updatedAt: now   // Date.now() pour IDB — Firebase reçoit serverTimestamp() au flush
   };
 
+  closeTaskModal();
+
   if (editingTaskId) {
     const existing = tasks.find(x => x.id === editingTaskId) || {};
     const updated = { ...existing, ...data, id: editingTaskId };
