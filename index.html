@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TRIVO" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192-v2.png" />
+  <title>TRIVO</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <style>
+    /* ─── TOKENS ─── */
+    :root {
+      --blue: #2563eb;
+      --blue-light: #3b82f6;
+      --blue-glow: #2563eb33;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+
+      --radius: 16px;
+      --radius-sm: 10px;
+      --nav-h: 70px;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-t: env(safe-area-inset-top, 0px);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0a0f1e;
+      --bg2: #111827;
+      --bg3: #1e2a3a;
+      --card: #161f30;
+      --border: #1e3a5f44;
+      --text: #f0f4ff;
+      --text2: #8fa3c0;
+      --text3: #4a6080;
+      --nav-bg: #0d1525ee;
+    }
+    [data-theme="light"] {
+      --bg: #f0f4ff;
+      --bg2: #e4eaf7;
+      --bg3: #d4def5;
+      --card: #ffffff;
+      --border: #c5d3ee;
+      --text: #0a1628;
+      --text2: #4a6080;
+      --text3: #8fa3c0;
+      --nav-bg: #ffffffee;
+    }
+
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    /* Activé via le toggle Paramètres → Plein écran stable */
+    html.fullscreen-stable, html.fullscreen-stable body {
+      height: auto;
+      min-height: 100vh;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+    input, textarea, select, button { font-family: inherit; }
+    button { cursor: pointer; border: none; background: none; }
+
+    /* ─── LAYOUT ─── */
+    /* 100dvh ne se met pas toujours à jour correctement dans une PWA standalone sur iOS,
+       donc on utilise une variable calculée en JS (--app-height) comme valeur de référence,
+       avec 100dvh comme repli si le JS n'a pas encore tourné. */
+    #app { height: var(--app-height, 100dvh); display: flex; flex-direction: column; }
+
+    /* ─── SCREENS ─── */
+    .screen {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 16px 16px calc(var(--nav-h) + var(--safe-b) + 16px);
+    }
+    .screen.active { display: block; }
+
+    /* ─── AUTH SCREEN ─── */
+    #auth-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 32px 24px;
+      background: var(--bg);
+    }
+    #auth-screen.active { display: flex; }
+    .auth-logo {
+      width: 72px; height: 72px;
+      background: var(--blue);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; margin-bottom: 24px;
+      /* box-shadow: 0 0 40px var(--blue-glow); */
+    }
+    .auth-logo img{width: 72px; height: 72px; background: var(--bg);}
+    .auth-title { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    .auth-sub { color: var(--text2); font-size: 14px; margin-bottom: 32px; }
+    .auth-tabs {
+      display: flex; background: var(--bg3); border-radius: var(--radius-sm);
+      padding: 4px; margin-bottom: 24px; width: 100%; max-width: 360px;
+    }
+    .auth-tab {
+      flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      color: var(--text2); transition: all 0.2s;
+    }
+    .auth-tab.active { background: var(--blue); color: #fff; }
+    .auth-form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+    .auth-form input {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      color: var(--text); font-size: 16px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .auth-form input:focus { border-color: var(--blue); }
+    .auth-form input::placeholder { color: var(--text3); }
+
+    /* Wrapper champ password + bouton œil */
+    .auth-pw-wrap { position: relative; width: 100%; }
+    .auth-pw-wrap input { width: 100%; padding-right: 48px; }
+    .auth-pw-eye {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--text3);
+      font-size: 16px; padding: 4px; display: flex; align-items: center;
+    }
+
+    /* Lien mot de passe oublié */
+    .auth-forgot {
+      text-align: right; font-size: 13px; color: var(--blue);
+      cursor: pointer; margin-top: -6px; user-select: none;
+    }
+
+    /* Modale mot de passe oublié */
+    .forgot-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; padding: 24px; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .forgot-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .forgot-modal {
+      background: var(--card); border-radius: 20px; padding: 28px 24px;
+      width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .forgot-modal-title { font-size: 17px; font-weight: 700; }
+    .forgot-modal-sub { font-size: 13px; color: var(--text2); line-height: 1.5; margin-top: -8px; }
+    .forgot-modal input {
+      width: 100%; background: var(--bg3); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      color: var(--text); font-size: 16px; outline: none;
+    }
+    .forgot-modal input:focus { border-color: var(--blue); }
+    .forgot-modal-actions { display: flex; gap: 10px; }
+    .forgot-modal-actions button { flex: 1; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-ghost { background: var(--bg3); color: var(--text2); border: none; }
+    .forgot-success { color: #22c55e; font-size: 13px; text-align: center; }
+    .btn-primary {
+      background: var(--blue); color: #fff; border-radius: var(--radius-sm);
+      padding: 14px; font-size: 16px; font-weight: 700;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+    .auth-error { color: var(--red); font-size: 13px; text-align: center; }
+    .auth-loader { color: var(--text2); font-size: 14px; text-align: center; }
+
+    /* ─── TOP BAR ─── */
+    #topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top, 0px));
+      background: var(--nav-bg); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .topbar-title { font-size: 18px; font-weight: 700; color: var(--blue); display: flex; align-items: center; gap: 8px; }
+    .topbar-logo-img { width: 26px; height: 26px; border-radius: 7px; object-fit: contain;}
+    .topbar-actions { display: flex; gap: 8px; align-items: center; }
+    .icon-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--bg3); display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--text2);
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--blue); display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff; overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ─── BOTTOM NAV (scrollable si >5 items) ─── */
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: calc(var(--nav-h) + var(--safe-b));
+      padding-bottom: var(--safe-b);
+      background: var(--nav-bg); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center;
+      overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      z-index: 100;
+    }
+    #bottom-nav::-webkit-scrollbar { display: none; }
+    .nav-item {
+      flex: 0 0 20%; min-width: 20%; display: flex; flex-direction: column; align-items: center;
+      gap: 4px; padding: 10px 0; color: var(--text3);
+      transition: color 0.2s; position: relative; scroll-snap-align: start;
+    }
+    #bottom-nav { scroll-snap-type: x proximity; }
+    .nav-item.active { color: var(--blue); }
+    .nav-icon { font-size: 22px; }
+    .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
+    .nav-dot {
+      position: absolute; top: 8px; right: calc(50% - 16px);
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red); border: 2px solid var(--nav-bg);
+    }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+    }
+    .card-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    /* ─── SECTION TITLE ─── */
+    .section-title {
+      font-size: 20px; font-weight: 700; margin-bottom: 16px; margin-top: 8px;
+    }
+
+    /* ─── PARTIE I — DASHBOARD ─── */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .stats-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .stat-card.blue::before { background: var(--blue); }
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.red::before { background: var(--red); }
+    .stat-card.orange::before { background: var(--orange); }
+    .stat-emoji { font-size: 24px; margin-bottom: 8px; }
+    .stat-num { font-size: 28px; font-weight: 800; line-height: 1; }
+    .stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; font-weight: 600; }
+    .stat-hours { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+    /* Progress ring */
+    .progress-ring-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      display: flex; flex-direction: column; align-items: center; margin-bottom: 12px;
+    }
+    .ring-label { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    .ring-container { position: relative; width: 140px; height: 140px; }
+    .ring-container svg { transform: rotate(-90deg); }
+    .ring-track { fill: none; stroke: var(--bg3); stroke-width: 12; }
+    .ring-fill { fill: none; stroke: var(--blue); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+    .ring-text {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .ring-pct { font-size: 30px; font-weight: 800; color: var(--text); }
+    .ring-sub { font-size: 11px; color: var(--text2); }
+
+    /* Weekly bar */
+    .week-bars { display: flex; gap: 6px; align-items: flex-end; height: 60px; margin-top: 16px; width: 100%; }
+    .week-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+    .week-bar { width: 100%; background: var(--bg3); border-radius: 4px; flex: 1; position: relative; overflow: hidden; }
+    .week-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; background: var(--blue); border-radius: 4px; transition: height 0.5s ease; }
+    .week-bar.today .week-bar-fill { background: var(--green); }
+    .week-day { font-size: 9px; color: var(--text3); font-weight: 600; }
+
+    /* ─── PARTIE II — TÂCHES ─── */
+    .fab {
+      position: fixed; bottom: calc(var(--nav-h) + var(--safe-b) + 16px); right: 16px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--blue); color: #fff; font-size: 28px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px var(--blue-glow); z-index: 99;
+      transition: transform 0.2s;
+    }
+    .fab:active { transform: scale(0.92); }
+
+    /* Task list */
+    .task-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+      display: flex; gap: 12px; align-items: flex-start;
+      transition: opacity 0.3s; position: relative; overflow: hidden;
+    }
+    .task-item::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    }
+    .task-color-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 4px 0 0 4px; }
+    .task-check {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border); flex-shrink: 0; margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .task-check.done { background: var(--green); border-color: var(--green); color: #fff; font-size: 12px; }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    .task-title.done { text-decoration: line-through; color: var(--text2); }
+    .task-content { font-size: 13px; color: var(--text2); margin-bottom: 6px; white-space: pre-wrap; }
+    .task-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .task-expand-arrow { font-size: 11px; color: var(--text3); cursor: pointer; padding: 4px; }
+    .task-expanded-content { margin-top: 6px; }
+    .task-recover-btn {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+      background: var(--green); color: #fff; font-size: 12px; font-weight: 700;
+      padding: 9px 14px; border-radius: 10px;
+    }
+    .task-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px;
+      background: var(--bg3); color: var(--text2); font-weight: 600;
+    }
+    .task-tag.alarm { background: #2563eb22; color: var(--blue-light); }
+    .task-actions { display: flex; gap: 6px; }
+    .task-action-btn {
+      width: 30px; height: 30px; border-radius: 8px; background: var(--bg3);
+      font-size: 15px; display: flex; align-items: center; justify-content: center;
+      color: var(--text2);
+    }
+
+    /* ══════════════════════════════════════════════════════
+       CARTES DE TÂCHES PREMIUM (écran Tâches)
+    ══════════════════════════════════════════════════════ */
+    .task-card-premium {
+      position: relative; overflow: hidden; border-radius: 18px; margin-bottom: 10px;
+      background: var(--card); border: 1px solid var(--border); padding: 13px 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .task-card-premium.compact { padding: 12px 13px; }
+    .task-card-premium.is-done { opacity: 0.6; }
+    .task-card-glow {
+      position: absolute; top: -40%; right: -20%; width: 70%; height: 140%;
+      border-radius: 50%; filter: blur(30px); pointer-events: none; z-index: 0;
+    }
+    .task-card-row { position: relative; z-index: 1; display: flex; gap: 10px; align-items: flex-start; }
+    .task-check-premium {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      border: 2.5px solid var(--task-color, var(--blue)); display: flex; align-items: center;
+      justify-content: center; transition: all 0.2s; font-size: 10px; color: #fff;
+    }
+    .task-check-premium.done { background: var(--task-color, var(--blue)); }
+    .task-card-titlerow { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .task-title-premium { font-size: 14.5px; font-weight: 800; line-height: 1.25; flex: 1; }
+    .task-title-premium.done { text-decoration: line-through; color: var(--text2); }
+    .task-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .task-tag-premium {
+      font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+      background: color-mix(in srgb, var(--task-color, var(--blue)) 16%, transparent);
+      color: var(--task-color, var(--blue));
+    }
+    .task-tag-premium.overdue-centered { margin: 0 auto; }
+    .task-tags-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .task-tag-chip {
+      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+      background: var(--bg3); color: var(--text2); display: flex; align-items: center; gap: 6px;
+    }
+    .task-tag-chip.removable i { cursor: pointer; color: var(--text3); }
+    .task-start-btn-compact {
+      display: flex; align-items: center; gap: 5px; margin-left: auto;
+      background: var(--task-color, var(--blue)); color: #fff; font-size: 11px; font-weight: 800;
+      padding: 6px 13px; border-radius: 30px; flex-shrink: 0;
+      box-shadow: 0 3px 10px color-mix(in srgb, var(--task-color, var(--blue)) 45%, transparent);
+    }
+    .subtask-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .subtask-item { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
+    .subtask-check {
+      width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--task-color, var(--blue));
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff;
+    }
+    .subtask-check.done { background: var(--task-color, var(--blue)); }
+    .subtask-done-text { text-decoration: line-through; color: var(--text3); }
+
+    /* ─── Carte spéciale FÊTE 🎉 ─── */
+    .task-card-party {
+      position: relative; overflow: hidden; border-radius: 20px; margin-bottom: 12px;
+      padding: 16px; background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #f59e0b 100%);
+      color: #fff; box-shadow: 0 8px 24px rgba(236,72,153,0.35);
+    }
+    .task-card-party.is-done { opacity: 0.65; }
+    .party-confetti {
+      position: absolute; top: 8px; right: 14px; font-size: 28px; opacity: 0.5;
+      transform: rotate(15deg);
+    }
+    .party-check {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      border: 2.5px solid #fff; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; font-size: 12px; color: #ec4899;
+    }
+    .party-check.done { background: #fff; }
+    .party-title { font-size: 17px; font-weight: 900; }
+    .party-title.done { text-decoration: line-through; opacity: 0.7; }
+    .party-arrow { color: rgba(255,255,255,0.8); }
+    .task-tag-party {
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+      background: rgba(255,255,255,0.25); color: #fff;
+    }
+    .party-content { color: rgba(255,255,255,0.9); }
+    .task-start-btn-party {
+      display: flex; align-items: center; gap: 6px; margin-top: 12px;
+      background: #fff; color: #ec4899; font-size: 12px; font-weight: 800;
+      padding: 9px 18px; border-radius: 30px; width: fit-content;
+    }
+    .party-action-btn { background: rgba(255,255,255,0.2); color: #fff; }
+
+    /* ─── Champs modal : récurrence, tags, sous-tâches ─── */
+    .recurrence-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+    .recurrence-suboptions { margin: 10px 0; padding: 12px; background: var(--bg3); border-radius: 14px; }
+    .weekday-picker { display: flex; gap: 6px; justify-content: space-between; }
+    .weekday-opt {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--card);
+      border: 1.5px solid var(--border); font-size: 12px; font-weight: 700; color: var(--text2);
+    }
+    .weekday-opt.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .duration-row { display: flex; gap: 10px; }
+    .duration-field { position: relative; flex: 1; }
+    .duration-field .field-input { padding-right: 40px; }
+    .duration-unit {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; color: var(--text3); font-weight: 600; pointer-events: none;
+    }
+    .priority-picker { display: flex; gap: 6px; height: 42px; align-items: center; }
+    .priority-opt {
+      width: 38px; height: 38px; border-radius: 10px; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+      border: 1.5px solid transparent; transition: all 0.15s;
+    }
+    .priority-opt.selected { border-color: var(--text); background: var(--card); transform: scale(1.05); }
+    .my-day-pick-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px;
+      background: var(--bg3); border-radius: 14px; margin-bottom: 8px; cursor: pointer;
+      border: 1.5px solid transparent;
+    }
+    .my-day-pick-item.selected { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--bg3)); }
+    .my-day-pick-check {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff;
+    }
+    .my-day-pick-item.selected .my-day-pick-check { background: var(--blue); border-color: var(--blue); }
+    .my-day-card {
+      display: flex; align-items: center; gap: 12px; padding: 12px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px;
+    }
+    .my-day-card-check {
+      width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--blue);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; cursor: pointer;
+    }
+    .my-day-card-check.done { background: var(--blue); }
+    .my-day-empty { font-size: 13px; color: var(--text3); padding: 10px 2px; }
+    .recurrence-opt {
+      padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--bg3); color: var(--text2); border: 1.5px solid transparent;
+    }
+    .recurrence-opt.selected { background: var(--blue); color: #fff; }
+    .tags-input-row { display: flex; gap: 8px; align-items: center; }
+    .tags-input-row .field-input { flex: 1; }
+    .tag-add-btn {
+      width: 42px; height: 42px; border-radius: 12px; background: var(--blue);
+      color: #fff; font-size: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .subtask-preview-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: var(--bg3); border-radius: 10px; margin-bottom: 6px; font-size: 13px;
+    }
+    .subtask-preview-item i { color: var(--text3); cursor: pointer; }
+
+    /* Filter tabs */
+    .section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .section-title-row-left { display: flex; align-items: center; gap: 10px; }
+
+    /* ─── MÉMOS ─── */
+    .memo-card-wrap {
+      position: relative; overflow: hidden; border-radius: 16px; margin-bottom: 10px;
+    }
+    .memo-card-delete-bg {
+      position: absolute; inset: 0; background: var(--red); border-radius: 16px;
+      display: flex; align-items: center; justify-content: flex-end; padding-right: 26px;
+      color: #fff; font-size: 18px;
+    }
+    .memo-card {
+      position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 14px 16px; cursor: pointer; touch-action: pan-y;
+    }
+    .memo-card-title { font-size: 14.5px; font-weight: 800; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .memo-card-preview { font-size: 12.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+    .memo-card-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text3); }
+    .memo-card-meta i { font-size: 10px; }
+    .memo-textarea {
+      width: 100%; min-height: 50vh; background: transparent; border: none; outline: none;
+      color: var(--text); font-size: 16px; line-height: 1.6; resize: none; font-family: inherit;
+      padding: 8px 2px;
+    }
+    .memo-recording-indicator {
+      display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--red);
+      font-weight: 700; padding: 10px 4px;
+    }
+    .memo-recording-dot {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--red);
+      animation: pulse 1s infinite;
+    }
+    .memo-audio-player {
+      display: flex; align-items: center; gap: 10px; background: var(--bg3);
+      border-radius: 14px; padding: 10px 14px; margin-top: 10px;
+    }
+    .memo-audio-play-btn {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--blue); color: #fff;
+      font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .memo-audio-player .music-seek { flex: 1; }
+    .memo-audio-duration { font-size: 11px; color: var(--text2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .memo-audio-delete-btn { color: var(--text3); font-size: 14px; flex-shrink: 0; }
+
+    /* ─── CROP PHOTO DE PROFIL (façon WhatsApp) ─── */
+    .crop-modal-content { display: flex; flex-direction: column; align-items: center; }
+    .crop-canvas-wrap {
+      position: relative; width: 280px; height: 280px; border-radius: 14px;
+      overflow: hidden; background: #000; touch-action: none; cursor: grab;
+      margin: 10px 0 16px;
+    }
+    .crop-canvas-wrap:active { cursor: grabbing; }
+    #crop-canvas { position: absolute; top: 0; left: 0; touch-action: none; }
+    .crop-circle-overlay {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 50%, transparent 0, transparent 138px, rgba(0,0,0,0.6) 139px);
+      border-radius: 14px;
+    }
+    .crop-zoom-row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 280px; }
+    .crop-zoom-row .music-seek { flex: 1; }
+
+    .advanced-filter-btn {
+      width: 36px; height: 36px; border-radius: 10px; background: var(--card);
+      border: 1px solid var(--border); color: var(--text2); font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .advanced-filter-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+    #memo-mic-btn.active { background: var(--red); color: #fff; border-color: var(--red); animation: pulse 1.2s infinite; }
+    .advanced-filters-panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 14px 16px; margin-bottom: 16px;
+    }
+
+    /* ─── VUE KANBAN ─── */
+    #kanban-board {
+      display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px;
+      margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+      scroll-snap-type: x proximity;
+    }
+    .kanban-column {
+      flex: 0 0 78%; max-width: 280px; scroll-snap-align: start;
+      background: var(--bg3); border-radius: 18px; padding: 12px; max-height: 70vh; display: flex; flex-direction: column;
+    }
+    .kanban-column-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 4px; }
+    .kanban-column-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kanban-column-count {
+      font-size: 11px; font-weight: 700; background: var(--card); color: var(--text2);
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .kanban-cards { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .kanban-card {
+      background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--task-color, var(--blue));
+      border-radius: 12px; padding: 10px 12px; cursor: pointer;
+    }
+    .kanban-card-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .kanban-card-title.done { text-decoration: line-through; color: var(--text2); }
+    .kanban-card-meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: 10px; color: var(--text3); }
+    .kanban-empty-col { font-size: 12px; color: var(--text3); text-align: center; padding: 16px 4px; }
+
+    .filter-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 16px; scrollbar-width: none; }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .filter-tab {
+      flex-shrink: 0; padding: 8px 16px; border-radius: 20px;
+      font-size: 13px; font-weight: 600; color: var(--text2);
+      background: var(--card); border: 1px solid var(--border); transition: all 0.2s;
+    }
+    .filter-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+    /* ─── MODAL (ajout/modif tâche) ─── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: #00000088; z-index: 200;
+      display: none; align-items: flex-end;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2); border-radius: 24px 24px 0 0;
+      padding: 24px; padding-bottom: calc(24px + var(--safe-b));
+      width: 100%; max-height: 90dvh; overflow-y: auto;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 36px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .field-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .field-input {
+      width: 100%; background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px; color: var(--text);
+      font-size: 16px; outline: none; margin-bottom: 14px; transition: border-color 0.2s;
+    }
+    .field-input:focus { border-color: var(--blue); }
+    .field-input.error { border-color: var(--red); }
+    .field-input::placeholder { color: var(--text3); }
+    textarea.field-input { resize: none; min-height: 80px; }
+    .field-row { display: flex; gap: 10px; }
+    /* iOS Safari rend les <input type="date/time"> plus larges que nécessaire ;
+       on réduit légèrement leur largeur sans casser les autres navigateurs. */
+    input[type="date"], input[type="time"] { max-width: 92%; }
+    .field-row > * { flex: 1; }
+
+    /* Color picker */
+    .color-picker { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .color-dot {
+      width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+      transition: transform 0.2s; border: 3px solid transparent;
+    }
+    .color-dot.selected { transform: scale(1.2); border-color: var(--text); }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .toggle-label { font-size: 14px; font-weight: 600; }
+    .toggle {
+      width: 48px; height: 28px; border-radius: 14px; background: var(--bg3);
+      position: relative; cursor: pointer; transition: background 0.2s;
+    }
+    .toggle.on { background: var(--blue); }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; border-radius: 50%; background: #fff;
+      transition: transform 0.2s;
+    }
+    .toggle.on::after { transform: translateX(20px); }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+    .btn-secondary {
+      flex: 1; padding: 14px; border-radius: var(--radius-sm);
+      background: var(--bg3); color: var(--text2); font-size: 15px; font-weight: 600;
+    }
+    .btn-danger {
+      padding: 14px 20px; border-radius: var(--radius-sm);
+      background: #ef444422; color: var(--red); font-size: 15px; font-weight: 600;
+    }
+
+    /* ─── PARTIE III — CALENDRIER ─── */
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px; }
+    .cal-day-name { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); padding: 4px 0; }
+    .cal-day {
+      aspect-ratio: 1; border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; position: relative;
+    }
+    .cal-day:hover { background: var(--bg3); }
+    .cal-day.today { background: var(--blue); color: #fff; }
+    .cal-day.has-tasks::after {
+      content: ''; position: absolute; bottom: 3px;
+      width: 4px; height: 4px; border-radius: 50%; background: var(--red);
+    }
+    .cal-day.today.has-tasks::after { background: #fff; }
+    .cal-day.other-month { color: var(--text3); }
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .cal-month { font-size: 18px; font-weight: 700; }
+
+    /* History tabs */
+    .history-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 16px; scrollbar-width: none; }
+    .history-tab {
+      flex-shrink: 0; padding: 8px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 700; color: var(--text2);
+      background: var(--card); border: 1px solid var(--border); transition: all 0.2s;
+    }
+    .history-tab.active { background: var(--blue); color: #fff; border-color: transparent; }
+
+    /* ─── PARTIE IV — ÉQUIPES ─── */
+    .team-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+    }
+    .team-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .team-avatar {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: var(--blue); display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .team-name { font-size: 17px; font-weight: 700; }
+    .team-id { font-size: 12px; color: var(--text2); font-family: monospace; }
+    .team-members { font-size: 12px; color: var(--text3); }
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 700;
+    }
+    .badge-blue { background: #2563eb22; color: var(--blue-light); }
+    .badge-green { background: #22c55e22; color: var(--green); }
+    .badge-orange { background: #f9731622; color: var(--orange); }
+
+    /* ─── PARTIE V — SETTINGS ─── */
+    .settings-avatar-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 0; gap: 12px;
+    }
+    .settings-avatar {
+      width: 88px; height: 88px; border-radius: 50%;
+      background: var(--blue); display: flex; align-items: center; justify-content: center;
+      font-size: 36px; font-weight: 700; color: #fff; overflow: hidden; position: relative;
+    }
+    .settings-avatar-edit {
+      position: absolute; bottom: 0; right: 0;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--blue); border: 2px solid var(--bg);
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .settings-name { font-size: 20px; font-weight: 700; }
+    .settings-email { font-size: 13px; color: var(--text2); }
+    .settings-section { margin-bottom: 24px; }
+    .settings-section-title { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding: 0 4px; }
+    .group-avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .group-avatar-opt {
+      aspect-ratio: 1/1; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #fff; cursor: pointer; border: 2.5px solid transparent; transition: all 0.2s;
+    }
+    .group-avatar-opt.selected { border-color: var(--text); transform: scale(1.08); }
+    .settings-item {
+      background: var(--card); border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+      margin-bottom: 2px; cursor: pointer; transition: background 0.2s;
+    }
+    .settings-item:first-of-type { border-radius: var(--radius) var(--radius) 0 0; }
+    .settings-item:last-of-type { border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 0; }
+    .settings-item:only-child { border-radius: var(--radius); }
+    .settings-item:hover { background: var(--bg3); }
+    .settings-item-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .settings-item-text { flex: 1; }
+    .settings-item-label { font-size: 15px; font-weight: 600; }
+    .settings-item-sub { font-size: 12px; color: var(--text2); }
+    .settings-item-right { color: var(--text3); font-size: 14px; }
+
+    /* Theme switcher */
+    .theme-switch {
+      display: flex; background: var(--bg3); border-radius: 12px; padding: 4px;
+    }
+    .theme-opt {
+      flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      color: var(--text2); text-align: center; transition: all 0.2s;
+    }
+    .theme-opt.active { background: var(--blue); color: #fff; }
+
+    /* ─── NOTIFICATIONS BANNER ─── */
+    .notif-banner {
+      background: linear-gradient(135deg, #1e3a5f, #1e2a3a);
+      border: 1px solid var(--blue);
+      border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .notif-banner-icon { font-size: 24px; }
+    .notif-banner-text { flex: 1; font-size: 13px; color: var(--text2); line-height: 1.4; }
+    .notif-banner-text strong { color: var(--text); }
+    .notif-banner-btn {
+      background: var(--blue); color: #fff; font-size: 12px; font-weight: 700;
+      padding: 8px 14px; border-radius: 8px;
+    }
+    .update-banner {
+      background: linear-gradient(135deg, #14532d, #166534);
+      border: 1px solid var(--green);
+    }
+    .update-banner .notif-banner-btn { background: var(--green); }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 24px; gap: 12px; color: var(--text3);
+    }
+    .empty-icon { font-size: 48px; }
+    .empty-title { font-size: 16px; font-weight: 700; color: var(--text2); }
+    .empty-sub { font-size: 13px; text-align: center; line-height: 1.5; }
+
+    /* ─── TOAST ─── */
+    #toast {
+      position: fixed; bottom: calc(var(--nav-h) + var(--safe-b) + 16px); left: 50%;
+      transform: translateX(-50%) translateY(20px); opacity: 0;
+      background: #1a2540; border: 1px solid var(--border);
+      color: var(--text); padding: 12px 20px; border-radius: 30px;
+      font-size: 14px; font-weight: 600; z-index: 999;
+      transition: all 0.3s; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ─── LOADING : cahier 3D animé (inspiré du logo TRIVO) ─── */
+    #loading {
+      position: fixed; inset: 0;
+      background: radial-gradient(circle at 50% 30%, #2d3fd4 0%, #1a1f6e 60%, #0d1040 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+      z-index: 9999;
+    }
+    .book-3d-wrap {
+      position: absolute; right: 23%;
+      width: 160px; height: 130px; perspective: 900px;
+    }
+    .book-3d {
+      position: relative; width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transform: rotateX(18deg);
+    }
+    .book-cover-back {
+      position: absolute; inset: 0; border-radius: 8px;
+      background: linear-gradient(160deg, #3b4fe0, #1a1f6e);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      transform: translateZ(-6px);
+    }
+    .book-cover-front {
+      position: absolute; left: 4px; right: 4px; top: 4px; bottom: 4px; border-radius: 6px;
+      background: linear-gradient(160deg, #4a5cf0, #232a8a);
+      transform: translateZ(-3px);
+    }
+    .book-page {
+      position: absolute; left: 6px; right: 25px; top: 6px; bottom: 6px;
+      background: linear-gradient(120deg, #ffffff 0%, #f0f2ff 100%);
+      border-radius: 4px;
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      box-shadow: 1px 0 3px rgba(0,0,0,0.1);
+      animation: pageFlip 3.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      animation-delay: calc(var(--i) * 0.36s);
+      opacity: 0;
+    }
+    @keyframes pageFlip {
+      0%   { transform: rotateY(0deg) translateZ(0); opacity: 0; }
+      2%   { opacity: 1; }
+      45%  { transform: rotateY(-170deg) translateZ(2px); opacity: 1; }
+      50%  { transform: rotateY(-180deg) translateZ(2px); opacity: 0; }
+      100% { transform: rotateY(-180deg) translateZ(2px); opacity: 0; }
+    }
+    .book-bookmark {
+      position: absolute; bottom: -18px; left: 50%; width: 14px; height: 38px;
+      background: linear-gradient(160deg, #5b6cf5, #3b4fe0);
+      transform: translateX(-50%);
+      clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%);
+    }
+    .loader-text {
+      font-size: 17px; font-weight: 800; color: #fff; letter-spacing: 1.5px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+    /* ─── PENDING BADGE ─── */
+    .pending-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .pending-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--bg3); display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; flex-shrink: 0;
+    }
+    .pending-info { flex: 1; }
+    .pending-name { font-size: 14px; font-weight: 700; }
+    .pending-sub { font-size: 12px; color: var(--text2); }
+    .pending-actions { display: flex; gap: 6px; }
+    .btn-accept { background: var(--green); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 8px; }
+    .btn-reject { background: #ef444422; color: var(--red); font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 8px; }
+
+    /* ─── TEAM CHAT (WhatsApp style) ─── */
+    .team-chat-modal {
+      position: fixed; inset: 0; width: 100%; height: 100%; max-width: 100%;
+      max-height: 100%; border-radius: 0; display: flex; flex-direction: column;
+      padding: 0; transform: none; background: var(--bg);
+    }
+    .team-chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px;
+      background: var(--nav-bg); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .team-chat-avatar {
+      width: 38px; height: 38px; border-radius: 50%; background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .team-chat-info { flex: 1; min-width: 0; }
+    .team-chat-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .team-chat-sub { font-size: 12px; color: var(--text2); }
+    .team-chat-feed {
+      flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+      overscroll-behavior: contain;
+    }
+    .chat-msg {
+      max-width: 80%; padding: 10px 14px; border-radius: 16px;
+      background: var(--card); border: 1px solid var(--border);
+      align-self: flex-start; font-size: 14px; line-height: 1.4;
+    }
+    .chat-msg.mine { background: var(--blue); color: #fff; align-self: flex-end; border: none; }
+    .chat-msg-author { font-size: 11px; font-weight: 700; color: var(--blue-light); margin-bottom: 3px; }
+    .chat-msg.mine .chat-msg-author { color: rgba(255,255,255,0.85); }
+    .chat-msg-time { font-size: 10px; opacity: 0.6; margin-top: 4px; text-align: right; }
+    .chat-task-card {
+      max-width: 88%; align-self: flex-start; background: var(--card);
+      border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px;
+      position: relative; overflow: hidden; cursor: pointer;
+    }
+    .chat-task-card .task-color-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .chat-task-label {
+      font-size: 10px; font-weight: 700; color: var(--blue-light);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .chat-task-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .chat-task-content { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+    .chat-reactions { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+    .chat-reaction {
+      font-size: 12px; background: var(--bg3); border-radius: 12px; padding: 2px 8px;
+      display: flex; align-items: center; gap: 3px; cursor: pointer; border: 1px solid var(--border);
+    }
+    .chat-reaction.active { background: #2563eb22; border-color: var(--blue); }
+    .chat-add-reaction { font-size: 12px; color: var(--text3); padding: 2px 6px; cursor: pointer; }
+    .team-chat-inputbar {
+      display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px;
+      padding-bottom: calc(10px + var(--safe-b));
+      background: var(--nav-bg); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .team-chat-addbtn {
+      width: 40px; height: 40px; border-radius: 50%; background: var(--blue);
+      color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+    }
+    .team-chat-input {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 20px; padding: 10px 16px; font-size: 16px; color: var(--text); min-width: 0;
+      resize: none; outline: none; line-height: 1.4; max-height: 132px; overflow-y: auto;
+      font-family: inherit;
+    }
+    .team-chat-sendbtn {
+      width: 40px; height: 40px; border-radius: 50%; background: var(--bg3);
+      color: var(--blue); font-size: 16px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ─── RESPONSIVE : phones étroits & larges ─── */
+    @media (max-width: 360px) {
+      :root { --radius: 14px; }
+      .screen { padding: 12px 12px calc(var(--nav-h) + var(--safe-b) + 12px); }
+      .stat-card { padding: 12px; }
+      .topbar-title { font-size: 16px; }
+      .nav-label { font-size: 9px; }
+      .ring-wrap svg { width: 130px; height: 130px; }
+    }
+    @media (min-width: 480px) and (max-width: 767px) {
+      .screen { max-width: 480px; margin: 0 auto; }
+      #bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); }
+      .fab { right: calc(50% - 240px + 16px); }
+    }
+    @media (min-width: 768px) {
+      .screen { max-width: 700px; margin: 0 auto; padding-left: 28px; padding-right: 28px; }
+      #bottom-nav { max-width: 700px; left: 50%; transform: translateX(-50%); }
+      .fab { right: calc(50% - 350px + 24px); }
+      .team-chat-modal { max-width: 700px; left: 50%; transform: translateX(-50%); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+      .stats-grid-3 { grid-template-columns: repeat(3, 1fr); }
+      #topbar { max-width: 700px; left: 50%; transform: translateX(-50%); }
+    }
+    @media (min-width: 1024px) {
+      body { display: flex; justify-content: center; }
+      #app { max-width: 800px; box-shadow: 0 0 40px rgba(0,0,0,0.3); }
+      .screen { max-width: 800px; }
+      #bottom-nav { max-width: 800px; }
+      #topbar { max-width: 800px; }
+      .team-chat-modal { max-width: 800px; }
+      .fab { right: calc(50% - 400px + 24px); }
+    }
+
+    /* ─── MUSIQUE (legacy, gardé pour mini-lecteur topbar) ─── */
+    .music-disc {
+      width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--blue), #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #fff;
+    }
+    .music-disc.spinning { animation: discSpin 3s linear infinite; }
+    @keyframes discSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .music-progress-wrap { margin: 14px 0 8px; width: 100%; }
+    .music-seek {
+      width: 100%; height: 4px; border-radius: 4px; background: var(--bg3);
+      -webkit-appearance: none; appearance: none; outline: none;
+    }
+    .music-seek::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--blue); cursor: pointer; box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+    }
+    .progress-seek::-webkit-slider-thumb { background: #fff; }
+    .progress-seek::-moz-range-thumb { background: #fff; border: none; width: 14px; height: 14px; border-radius: 50%; }
+    .music-time-row {
+      display: flex; justify-content: space-between; font-size: 11px;
+      color: var(--text3); margin-top: 4px; font-variant-numeric: tabular-nums;
+    }
+    .music-ctrl-btn {
+      width: 38px; height: 38px; border-radius: 50%; background: var(--bg3);
+      color: var(--text); font-size: 15px; display: flex; align-items: center; justify-content: center;
+    }
+    .music-play-btn {
+      width: 52px; height: 52px; background: var(--blue); color: #fff; font-size: 18px;
+    }
+    #music-loop-btn.active { color: var(--blue); background: #2563eb22; }
+
+    /* ══════════════════════════════════════════════════════
+       LECTEUR MUSIQUE PREMIUM
+    ══════════════════════════════════════════════════════ */
+    .music-player-premium {
+      position: relative; overflow: hidden; border-radius: 28px; margin-bottom: 18px;
+      background: radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--blue) 30%, #0a0a0f) 0%, #0a0a0f 65%);
+      padding: 28px 20px 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+    .music-player-glow {
+      position: absolute; top: -20%; left: 50%; width: 70%; height: 60%;
+      background: var(--blue); border-radius: 50%; filter: blur(50px); opacity: 0.3;
+      transform: translateX(-50%);
+    }
+    .music-player-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+    .music-disc-premium {
+      width: 84px; height: 84px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--blue), #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; color: #fff; margin-bottom: 14px;
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--blue) 50%, transparent);
+    }
+    .music-disc-premium.spinning { animation: discSpin 3s linear infinite; }
+
+    /* Visualiseur audio (barres animées) */
+    .music-visualizer { display: flex; align-items: center; justify-content: center; gap: 4px; height: 28px; margin-bottom: 14px; }
+    .music-visualizer span {
+      width: 3px; height: 6px; background: var(--blue-light); border-radius: 2px;
+      animation: none; opacity: 0.4;
+    }
+    .music-visualizer.playing span { animation: vizBounce 1s infinite ease-in-out; opacity: 1; }
+    .music-visualizer span:nth-child(1) { animation-delay: 0s; }
+    .music-visualizer span:nth-child(2) { animation-delay: 0.1s; }
+    .music-visualizer span:nth-child(3) { animation-delay: 0.2s; }
+    .music-visualizer span:nth-child(4) { animation-delay: 0.3s; }
+    .music-visualizer span:nth-child(5) { animation-delay: 0.2s; }
+    .music-visualizer span:nth-child(6) { animation-delay: 0.1s; }
+    .music-visualizer span:nth-child(7) { animation-delay: 0s; }
+    @keyframes vizBounce { 0%,100% { height: 6px; } 50% { height: 26px; } }
+
+    .music-current-title-premium { font-size: 16px; font-weight: 800; color: #fff; text-align: center; max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .music-current-sub-premium { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 18px; }
+    .music-player-premium .music-time-row { color: rgba(255,255,255,0.5); width: 100%; }
+    .music-player-premium .music-seek { background: rgba(255,255,255,0.15); }
+
+    .music-controls-premium { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 18px 0 14px; }
+    .music-ctrl-btn-premium {
+      width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1);
+      color: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    }
+    .music-ctrl-btn-premium.active { color: var(--blue-light); background: rgba(255,255,255,0.2); }
+    .music-play-btn-premium {
+      width: 58px; height: 58px; border-radius: 50%; background: #fff;
+      color: #0a0a0f; font-size: 20px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(255,255,255,0.25);
+    }
+    .music-volume-row { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 16px; }
+    .music-volume-row i { color: rgba(255,255,255,0.5); font-size: 13px; width: 16px; }
+    .music-volume-ios-note {
+      display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 16px;
+      font-size: 12px; color: rgba(255,255,255,0.55); justify-content: center;
+    }
+    .music-player-premium .volume-seek { background: rgba(255,255,255,0.15); }
+
+    /* Minuteur de session musique */
+    .music-timer-row {
+      display: flex; align-items: center; justify-content: space-between; width: 100%;
+      padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .music-timer-label { font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .music-timer-opts { display: flex; gap: 6px; }
+    .music-timer-opt {
+      font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 12px;
+      background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);
+    }
+    .music-timer-opt.active { background: var(--blue); color: #fff; }
+    .music-timer-active {
+      width: 100%; margin-top: 10px; font-size: 12px; color: var(--blue-light);
+      display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600;
+    }
+
+    /* Mode Bibliothèque */
+    .library-mode-card {
+      display: flex; align-items: center; gap: 14px; padding: 16px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 12%, var(--card)), var(--card));
+      border: 1px solid var(--border); border-radius: 18px; margin-bottom: 16px; cursor: pointer;
+    }
+    .library-mode-icon {
+      width: 44px; height: 44px; border-radius: 14px; background: var(--blue);
+      color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .library-mode-text { flex: 1; }
+    .library-mode-title { font-size: 14px; font-weight: 700; }
+    .library-mode-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+    .music-upload-card-premium {
+      display: flex; align-items: center; gap: 10px; justify-content: center;
+      padding: 16px; margin-bottom: 16px; cursor: pointer; color: var(--blue-light);
+      font-size: 13px; font-weight: 700; border: 1.5px dashed color-mix(in srgb, var(--blue) 40%, var(--border));
+      background: color-mix(in srgb, var(--blue) 6%, transparent); border-radius: 16px;
+    }
+
+    .music-track-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      margin-bottom: 8px; cursor: pointer;
+    }
+    .music-track-item.playing { border-color: var(--blue); background: #2563eb11; }
+    .music-track-icon {
+      width: 36px; height: 36px; border-radius: 10px; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0;
+    }
+    .music-track-item.playing .music-track-icon { background: var(--blue); color: #fff; }
+    .music-track-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .music-track-del { color: var(--text3); font-size: 14px; padding: 6px; }
+    .music-category { margin-bottom: 8px; }
+    .music-category-header {
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px; cursor: pointer;
+    }
+    .music-category-body { padding: 6px 0 0 12px; }
+    .music-track-item.sub { margin-left: 8px; background: transparent; border: none; padding: 8px 12px; }
+    .music-track-item.sub .music-track-icon { width: 28px; height: 28px; font-size: 11px; }
+
+    /* ─── MA PLAYLIST EN GRID (style fichiers) ─── */
+    .music-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 4px 0 8px;
+    }
+    .music-grid-item {
+      display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-width: 0;
+    }
+    .music-grid-rect {
+      width: 100%; aspect-ratio: 1/1; max-width: 100px; border-radius: 14px;
+      background: var(--bg3); border: 1.5px solid var(--border); display: flex;
+      align-items: center; justify-content: center; font-size: 24px; color: var(--blue);
+      position: relative; box-sizing: border-box;
+    }
+    .music-grid-rect.playing { border-color: var(--blue); background: var(--blue); color: #fff; }
+    .music-grid-name {
+      font-size: 11px; text-align: center; color: var(--text2); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    .music-back-btn {
+      display: flex; align-items: center; gap: 8px; color: var(--blue-light);
+      font-size: 13px; font-weight: 600; margin-bottom: 12px; cursor: pointer;
+    }
+
+    /* ─── CONFIRMATION SUPPRESSION (double-clic) ─── */
+    .confirm-popup-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 998;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .confirm-popup {
+      background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+      padding: 20px; width: 80%; max-width: 280px; text-align: center;
+    }
+    .confirm-popup-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+    .confirm-popup-actions { display: flex; gap: 10px; }
+
+    /* ─── MINI-LECTEUR TOPBAR ─── */
+    .topbar-music-icon { position: relative; cursor: pointer; }
+    .topbar-music-icon.active { color: var(--blue); }
+    .topbar-focus-badge {
+      display: flex; align-items: center; gap: 6px; background: var(--blue);
+      color: #fff; font-size: 12px; font-weight: 700; padding: 6px 12px;
+      border-radius: 14px; cursor: pointer; font-variant-numeric: tabular-nums;
+    }
+    .mini-player-drop {
+      position: fixed; top: calc(var(--safe-t) + 6px); left: 50%; z-index: 200;
+      background: #000; border-radius: 24px;
+      width: 36px; height: 36px; overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transform: translateX(-50%); opacity: 0; pointer-events: none;
+      transition: width 0.38s cubic-bezier(0.32, 0.72, 0, 1), height 0.38s cubic-bezier(0.32, 0.72, 0, 1),
+                  border-radius 0.38s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease;
+    }
+    .mini-player-drop.open {
+      width: 260px; height: auto; border-radius: 28px; opacity: 1; pointer-events: auto;
+      padding: 16px 18px;
+    }
+    .mini-player-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; opacity: 0; transition: opacity 0.25s ease 0.15s; }
+    .mini-player-drop.open .mini-player-title { opacity: 1; }
+    .mini-player-controls { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; opacity: 0; transition: opacity 0.25s ease 0.15s; }
+    .mini-player-drop.open .mini-player-controls { opacity: 1; }
+    .mini-player-controls .music-ctrl-btn { width: 32px; height: 32px; font-size: 12px; background: rgba(255,255,255,0.12); color: #fff; }
+    .mini-player-controls .music-play-btn { width: 42px; height: 42px; font-size: 15px; background: #fff; color: #000; }
+    .mini-player-loop { display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.25s ease 0.15s; }
+    .mini-player-drop.open .mini-player-loop { opacity: 1; }
+    .mini-player-loop .music-ctrl-btn { background: rgba(255,255,255,0.12); color: #fff; }
+    .mini-player-loop .music-ctrl-btn.active { background: var(--blue); color: #fff; }
+
+    /* ─── FOCUS / POMODORO PREMIUM ─── */
+    .focus-card-premium {
+      position: relative; overflow: hidden; border-radius: 28px; margin-bottom: 16px;
+      background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--blue) 35%, #0a0a0f) 0%, #0a0a0f 70%);
+      padding: 32px 20px 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+    .focus-glow-bg {
+      position: absolute; top: -30%; left: 50%; width: 80%; height: 80%;
+      background: var(--blue); border-radius: 50%; filter: blur(60px); opacity: 0.35;
+      transform: translateX(-50%); animation: focusGlowPulse 3s infinite ease-in-out;
+    }
+    @keyframes focusGlowPulse { 0%,100% { opacity: 0.25; transform: translateX(-50%) scale(1); } 50% { opacity: 0.45; transform: translateX(-50%) scale(1.15); } }
+    .focus-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+    .focus-label-premium {
+      font-size: 12px; font-weight: 800; color: var(--blue-light); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .focus-task-title-premium { font-size: 19px; font-weight: 800; margin-bottom: 22px; text-align: center; color: #fff; }
+    .focus-ring-wrap-premium { position: relative; width: 200px; height: 200px; margin-bottom: 22px; }
+    .focus-ring-glow {
+      position: absolute; inset: 10px; border-radius: 50%; background: var(--blue);
+      filter: blur(25px); opacity: 0.4;
+    }
+    .focus-ring-wrap-premium svg { position: relative; z-index: 1; transform: rotate(-90deg); }
+    .ring-track-premium { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 10; }
+    .ring-fill-premium { fill: none; stroke: #fff; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; filter: drop-shadow(0 0 8px rgba(255,255,255,0.6)); }
+    .focus-ring-text-premium { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2; }
+    .focus-time-premium { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; color: #fff; letter-spacing: -1px; }
+    .focus-phase-premium { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; font-weight: 600; }
+    .focus-cycles-dots { display: flex; gap: 8px; margin-bottom: 22px; }
+    .focus-cycle-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: all 0.3s; }
+    .focus-cycle-dot.done { background: var(--blue-light); }
+    .focus-cycle-dot.current { background: #fff; transform: scale(1.4); box-shadow: 0 0 8px rgba(255,255,255,0.6); }
+    .focus-cycle-dot.break { background: rgba(251,146,60,0.4); }
+    .focus-cycle-dot.break.done { background: #fb923c; }
+    .focus-controls-premium { display: flex; align-items: center; gap: 14px; }
+    .focus-ctrl-btn-premium {
+      width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.12);
+      color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px);
+    }
+    .focus-stop-btn-premium {
+      display: flex; align-items: center; gap: 8px; background: rgba(239,68,68,0.2);
+      color: #f87171; font-size: 13px; font-weight: 700; padding: 14px 22px; border-radius: 26px;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       DASHBOARD PREMIUM — nouveau design
+    ══════════════════════════════════════════════════════ */
+
+    /* ─── Header date + avatar ─── */
+    #screen-dashboard { padding-top: 10px; }
+    .dash-logo-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+    .dash-logo-img { width: 64px; height: 64px; border-radius: 16px; object-fit: contain; }
+    .dash-logo-fallback {
+      width: 64px; height: 64px; border-radius: 16px; background: var(--blue);
+      color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center;
+    }
+    .dash-header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      margin-bottom: 20px; padding: 0 2px;
+    }
+    .dash-date-block { display: flex; flex-direction: column; gap: 4px; }
+    .dash-greeting-pill {
+      display: inline-flex; align-items: center;
+      background: var(--blue); color: #fff; font-size: 12px; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px; margin-bottom: 4px; width: fit-content;
+      opacity: 0; transform: translateY(-6px); transition: opacity 0.35s, transform 0.35s;
+    }
+    .dash-greeting-pill.show { opacity: 1; transform: translateY(0); }
+    .dash-day {
+      font-size: 32px; font-weight: 900; letter-spacing: -1px; line-height: 1;
+      color: var(--text);
+    }
+    .dash-date {
+      font-size: 32px; font-weight: 900; letter-spacing: -1px; line-height: 1;
+      color: var(--blue);
+    }
+    .dash-avatar-wrap { flex-shrink: 0; }
+    .dash-avatar {
+      width: 46px; height: 46px; font-size: 16px; cursor: pointer;
+      border: 2.5px solid var(--blue); box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
+    }
+
+    /* ─── Phrase de motivation ─── */
+    .motivation-quote {
+      display: flex; align-items: center; gap: 10px; background: var(--bg3);
+      border-left: 3px solid var(--blue); border-radius: 14px; padding: 12px 14px;
+      margin-bottom: 18px; font-size: 13px; color: var(--text2); font-style: italic;
+      opacity: 0; transform: translateY(-6px); transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .motivation-quote.show { opacity: 1; transform: translateY(0); }
+    .motivation-quote i { color: var(--blue); flex-shrink: 0; }
+
+    /* ─── Section label "À venir" ─── */
+    .dash-section-label {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .dash-section-label span { font-size: 13px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .dash-see-all { font-size: 12px; font-weight: 600; color: var(--blue); display: flex; align-items: center; gap: 4px; }
+
+    /* ─── Cards de tâches premium ─── */
+    .dash-task-card {
+      position: relative; border-radius: 22px; overflow: hidden; margin-bottom: 12px;
+      min-height: 110px; padding: 18px 16px 16px 18px; cursor: pointer;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    }
+    .dash-task-card-main {
+      background: linear-gradient(140deg, var(--blue) 0%, var(--blue-dark, #1e3a8a) 100%);
+      color: #fff;
+    }
+    .dash-task-card-secondary {
+      background: var(--card); border: 1px solid var(--border); color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .dash-task-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .dash-task-badge {
+      background: rgba(255,255,255,0.18); border-radius: 10px; padding: 6px 10px;
+      font-size: 13px; font-weight: 800; text-align: center; line-height: 1.2;
+      flex-shrink: 0; min-width: 44px;
+    }
+    .dash-task-card-secondary .dash-task-badge {
+      background: var(--blue); color: #fff;
+    }
+    .dash-task-badge-day { font-size: 18px; display: block; }
+    .dash-task-badge-month { font-size: 10px; text-transform: uppercase; display: block; }
+    .dash-task-title-wrap { flex: 1; min-width: 0; }
+    .dash-task-name {
+      font-size: 17px; font-weight: 800; line-height: 1.25; margin-bottom: 4px;
+    }
+    .dash-task-sub { font-size: 12px; opacity: 0.75; display: flex; gap: 8px; flex-wrap: wrap; }
+    .dash-task-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+    .dash-task-start-btn {
+      display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.2);
+      color: #fff; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 30px;
+      backdrop-filter: blur(4px);
+    }
+    .dash-task-card-secondary .dash-task-start-btn {
+      background: var(--blue); color: #fff;
+    }
+    .dash-task-hours { font-size: 12px; opacity: 0.7; display: flex; align-items: center; gap: 4px; }
+    .dash-empty-tasks {
+      background: var(--card); border: 1px solid var(--border); border-radius: 22px;
+      padding: 32px 20px; text-align: center; margin-bottom: 12px;
+    }
+    .dash-empty-icon { font-size: 28px; margin-bottom: 8px; }
+    .dash-empty-txt { font-size: 14px; color: var(--text2); }
+
+    /* ─── Streak premium ─── */
+    .dash-streak-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 14px 16px;
+    }
+    .dash-streak-fire { font-size: 28px; flex-shrink: 0; color: #94a3b8; transition: color 0.3s, transform 0.3s; }
+    .dash-streak-fire.lvl1 { color: #fb923c; }
+    .dash-streak-fire.lvl2 { color: #f97316; transform: scale(1.1); }
+    .dash-streak-fire.lvl3 { color: #ef4444; transform: scale(1.2); animation: flamePulse 1.5s infinite ease-in-out; }
+    @keyframes flamePulse { 0%, 100% { transform: scale(1.2); } 50% { transform: scale(1.35); } }
+    .dash-streak-text { display: flex; align-items: baseline; gap: 4px; }
+    .dash-streak-num { font-size: 22px; font-weight: 900; }
+    .dash-streak-sub { font-size: 12px; color: var(--text3); }
+    .dash-streak-bar-wrap { flex: 1; background: var(--bg3); border-radius: 6px; height: 6px; overflow: hidden; }
+    .dash-streak-bar { height: 100%; background: var(--blue); border-radius: 6px; transition: width 0.6s ease; }
+
+    /* ─── HABITUDES ─── */
+    .habit-card {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 8px;
+    }
+    .habit-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .habit-dots { display: flex; gap: 4px; }
+    .habit-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bg3); }
+    .habit-dot.done { background: var(--green); }
+    .habit-dot.today { box-shadow: 0 0 0 2px var(--blue); }
+
+    /* ─── Stats pills horizontales ─── */
+    .dash-stats-row {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .dash-stat-pill {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 14px 8px; border-radius: 16px; gap: 4px;
+    }
+    .dash-stat-pill.blue { background: rgba(37,99,235,0.12); }
+    .dash-stat-pill.green { background: rgba(34,197,94,0.12); }
+    .dash-stat-pill.red { background: rgba(239,68,68,0.12); }
+    .dash-stat-num { font-size: 24px; font-weight: 900; color: var(--text); }
+    .dash-stat-lbl { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.3px; }
+
+    /* ─── Carte progression semaine ─── */
+    .dash-week-card {
+      background: linear-gradient(140deg, var(--blue) 0%, var(--blue-dark, #1e3a8a) 100%);
+      border-radius: 22px; padding: 18px; margin-bottom: 16px; color: #fff;
+      box-shadow: 0 8px 24px rgba(37,99,235,0.25);
+    }
+    .dash-week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .dash-week-label { font-size: 12px; font-weight: 600; opacity: 0.75; margin-bottom: 4px; }
+    .dash-week-pct { font-size: 28px; font-weight: 900; }
+    .dash-week-card .week-bars { justify-content: space-between; height: 50px; }
+    .dash-week-card .week-bar { background: rgba(255,255,255,0.2); }
+    .dash-week-card .week-bar-fill { background: #fff; }
+    .dash-week-card .week-bar.today { background: rgba(255,255,255,0.3); }
+    .dash-week-card .week-day { color: rgba(255,255,255,0.7); }
+
+    /* ─── Focus card (pendant session pomodoro) ─── */
+    .dash-focus-card {
+      background: linear-gradient(140deg, var(--blue) 0%, var(--blue-dark, #1e3a8a) 100%);
+      border-radius: 22px; padding: 24px 18px; margin-bottom: 16px; color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      box-shadow: 0 8px 24px rgba(37,99,235,0.3);
+    }
+
+    /* ─── INDICATEUR "EN TRAIN D'ÉCRIRE" ─── */
+    .typing-indicator {
+      display: flex; align-items: center; gap: 4px; padding: 8px 14px;
+      background: var(--card); border-radius: 16px; align-self: flex-start; width: fit-content;
+    }
+    .typing-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--text3);
+      animation: typingBounce 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+    /* ─── COULEURS DE THÈME (en plus du bleu) ─── */
+    [data-accent="green"] { --blue: #16a34a; --blue-light: #4ade80; --blue-dark: #14532d; }
+    [data-accent="orange"] { --blue: #ea580c; --blue-light: #fb923c; --blue-dark: #7c2d12; }
+    [data-accent="purple"] { --blue: #7c3aed; --blue-light: #a78bfa; --blue-dark: #3b0764; }
+    .accent-dot {
+      width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .accent-dot.selected { border-color: var(--text); }
+    .accent-dot-inner { width: 24px; height: 24px; border-radius: 50%; }
+    .thanks-name-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .thanks-credits {
+      text-align: left; background: var(--bg3); border-radius: 14px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .thanks-credit-line { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 8px; }
+    .thanks-credit-line strong { color: var(--text); }
+
+    /* ─── MODE CONCENTRATION : voile d'assombrissement ─── */
+    #concentration-overlay {
+      position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none;
+      z-index: 50; transition: opacity 0.6s ease;
+    }
+    #concentration-overlay.active { opacity: var(--dim-intensity, 0.35); }
+
+    /* ─── AIDE & TUTORIEL ─── */
+    .help-category { margin-bottom: 8px; }
+    .help-category-header {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      background: var(--bg3); border-radius: 14px; cursor: pointer;
+    }
+    .help-category-icon {
+      width: 34px; height: 34px; border-radius: 10px; background: var(--blue);
+      color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+    }
+    .help-category-title { flex: 1; font-size: 14px; font-weight: 700; }
+    .help-category-body { font-size: 13px; color: var(--text2); line-height: 1.7; padding: 12px 14px 4px; }
+    .help-category-body strong { color: var(--text); }
+
+    /* ─── ANIMATIONS ─── */
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="book-3d-wrap">
+    <div class="book-3d">
+      <div class="book-cover-back"></div>
+      <div class="book-cover-front"></div>
+      <div class="book-page" style="--i:0;"></div>
+      <div class="book-page" style="--i:1;"></div>
+      <div class="book-page" style="--i:2;"></div>
+      <div class="book-page" style="--i:3;"></div>
+      <div class="book-page" style="--i:4;"></div>
+      <div class="book-page" style="--i:5;"></div>
+      <div class="book-page" style="--i:6;"></div>
+      <div class="book-page" style="--i:7;"></div>
+      <div class="book-page" style="--i:8;"></div>
+      <div class="book-page" style="--i:9;"></div>
+      <div class="book-bookmark"></div>
+    </div>
+  </div>
+  <div class="loader-text">TRIVO</div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-logo"> <img src="icons/icon-192-v2.png" alt=""></div>
+  <div class="auth-title">TRIVO</div>
+  <div class="auth-sub">Organise ta vie. Synchronise ton équipe.</div>
+
+  <div class="auth-tabs">
+    <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Connexion</button>
+    <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Inscription</button>
+  </div>
+
+  <div class="auth-form" id="login-form">
+    <input type="email" id="login-email" placeholder="Email" autocomplete="email" />
+    <div class="auth-pw-wrap">
+      <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" />
+      <button class="auth-pw-eye" type="button" onclick="togglePwVisibility('login-password', this)" aria-label="Voir le mot de passe">
+        <i class="fa-regular fa-eye"></i>
+      </button>
+    </div>
+    <div class="auth-forgot" onclick="openForgotModal()">Mot de passe oublié ?</div>
+    <button class="btn-primary" onclick="doLogin()">Se connecter</button>
+    <div id="login-error" class="auth-error"></div>
+  </div>
+
+  <div class="auth-form" id="register-form" style="display:none">
+    <input type="text" id="reg-pseudo" placeholder="Pseudo" maxlength="30" />
+    <input type="email" id="reg-email" placeholder="Email" autocomplete="email" />
+    <div class="auth-pw-wrap">
+      <input type="password" id="reg-password" placeholder="Mot de passe (6+ caractères)" autocomplete="new-password" />
+      <button class="auth-pw-eye" type="button" onclick="togglePwVisibility('reg-password', this)" aria-label="Voir le mot de passe">
+        <i class="fa-regular fa-eye"></i>
+      </button>
+    </div>
+    <button class="btn-primary" onclick="doRegister()">Créer mon compte</button>
+    <div id="register-error" class="auth-error"></div>
+  </div>
+</div>
+
+<!-- MODALE MOT DE PASSE OUBLIÉ -->
+<div class="forgot-modal-overlay" id="forgot-modal-overlay" onclick="if(event.target===this)closeForgotModal()">
+  <div class="forgot-modal">
+    <div class="forgot-modal-title">🔑 Mot de passe oublié</div>
+    <div class="forgot-modal-sub">Entre ton email — on t'envoie un lien pour réinitialiser ton mot de passe.</div>
+    <input type="email" id="forgot-email" placeholder="ton@email.com" autocomplete="email" />
+    <div id="forgot-error" class="auth-error"></div>
+    <div id="forgot-success" class="forgot-success" style="display:none">✅ Email envoyé ! Vérifie ta boîte (et les spams).</div>
+    <div class="forgot-modal-actions">
+      <button class="btn-ghost" onclick="closeForgotModal()">Annuler</button>
+      <button class="btn-primary" onclick="doForgotPassword()">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+
+  <!-- TOP BAR -->
+   <div id="topbar">
+    <div class="topbar-title" id="topbar-title">
+      <img src="icons/icon-logo.png" alt="" class="topbar-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';" />
+      <i class="fa-solid fa-book-open" style="display:none;"></i> TRIVO
+    </div>
+    <div class="topbar-actions" id="topbar-actions-normal">
+      <div class="icon-btn topbar-music-icon" id="topbar-music-icon" onclick="toggleMiniPlayer()" style="display:none;"><i class="fa-solid fa-music"></i></div>
+      <div class="topbar-focus-badge" id="topbar-focus-badge" style="display:none;" onclick="goTo('dashboard')">
+        <i class="fa-solid fa-stopwatch"></i> <span id="topbar-focus-time">25:00</span>
+      </div>
+      <div class="avatar" id="user-avatar" onclick="goTo('settings')">?</div>
+    </div>
+  </div>
+
+  <!-- MINI LECTEUR (dropdown depuis la topbar) -->
+  <div class="mini-player-drop" id="mini-player-drop">
+    <div class="mini-player-title" id="mini-player-title">—</div>
+    <div class="mini-player-controls">
+      <button class="music-ctrl-btn" onclick="musicPrev()"><i class="fa-solid fa-backward-step"></i></button>
+      <button class="music-ctrl-btn music-play-btn" id="mini-play-btn" onclick="musicTogglePlay()"><i class="fa-solid fa-pause"></i></button>
+      <button class="music-ctrl-btn" onclick="musicNext()"><i class="fa-solid fa-forward-step"></i></button>
+    </div>
+    <div class="mini-player-loop">
+      <button class="music-ctrl-btn" onclick="musicToggleLoop()" id="mini-loop-btn"><i class="fa-solid fa-repeat"></i></button>
+      <button class="music-ctrl-btn" onclick="stopMusicCompletely()" style="margin-left:8px;"><i class="fa-solid fa-stop"></i></button>
+    </div>
+  </div>
+
+  <!-- SCREEN 1: DASHBOARD -->
+  <div class="screen active" id="screen-dashboard">
+
+    <!-- HEADER PREMIUM : Date grande + avatar -->
+    <div class="dash-header">
+      <div class="dash-date-block">
+        <div class="dash-greeting-pill" id="dash-greeting-pill" style="display:none;">
+          <span id="dash-greeting-text">Bonjour 👋</span>
+        </div>
+        <div class="dash-day" id="dash-day">Mardi.</div>
+        <div class="dash-date" id="dash-date">18 Juin</div>
+      </div>
+      <div class="dash-avatar-wrap" onclick="goTo('settings')">
+        <div class="avatar dash-avatar" id="dash-avatar">?</div>
+      </div>
+    </div>
+
+    <!-- Phrase de motivation -->
+    <div class="motivation-quote" id="motivation-quote" style="display:none;">
+      <i class="fa-solid fa-quote-left"></i>
+      <span class="motivation-text">—</span>
+    </div>
+
+    <div id="notif-banner-wrap"></div>
+
+    <!-- VUE FOCUS (session pomodoro active) -->
+    <div class="focus-card-premium" id="focus-card" style="display:none;">
+      <div class="focus-glow-bg"></div>
+      <div class="focus-content">
+        <div class="focus-label-premium"><i class="fa-solid fa-bolt"></i> Mode concentration</div>
+        <div class="focus-task-title-premium" id="focus-task-title">—</div>
+
+        <div class="focus-ring-wrap-premium">
+          <div class="focus-ring-glow"></div>
+          <svg width="200" height="200" viewBox="0 0 200 200">
+            <circle class="ring-track-premium" cx="100" cy="100" r="88" />
+            <circle class="ring-fill-premium" id="focus-ring-fill" cx="100" cy="100" r="88" stroke-dasharray="553" stroke-dashoffset="553" />
+          </svg>
+          <div class="focus-ring-text-premium">
+            <div class="focus-time-premium" id="focus-time-left">25:00</div>
+            <div class="focus-phase-premium" id="focus-phase-label">Pomodoro 1/4</div>
+          </div>
+        </div>
+
+        <div class="focus-cycles-dots" id="focus-cycles-dots"></div>
+
+        <div class="focus-controls-premium">
+          <button class="focus-ctrl-btn-premium" onclick="focusPauseResume()" id="focus-pause-btn"><i class="fa-solid fa-pause"></i></button>
+          <button class="focus-stop-btn-premium" onclick="stopFocusSession()"><i class="fa-solid fa-stop"></i> Arrêter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MA JOURNÉE : sélection manuelle quotidienne, réinitialisée chaque jour -->
+    <div class="dash-section-label">
+      <span><i class="fa-solid fa-sun"></i> Ma journée</span>
+      <button class="dash-see-all" onclick="openMyDayPicker()"><i class="fa-solid fa-plus"></i> Choisir</button>
+    </div>
+    <div id="my-day-wrap" style="margin-bottom:18px;">
+      <div id="my-day-list"></div>
+    </div>
+
+    <!-- TÂCHES À VENIR (nouvelles cards premium) -->
+    <div class="dash-section-label">
+      <span>À venir</span>
+      <button class="dash-see-all" onclick="goTo('tasks')">Voir tout <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+    <div id="upcoming-wrap">
+      <div id="upcoming-tasks-list"></div>
+    </div>
+
+    <!-- STREAK PREMIUM -->
+    <div class="dash-streak-row">
+      <div class="dash-streak-fire" id="streak-flame"><i class="fa-solid fa-fire"></i></div>
+      <div class="dash-streak-text">
+        <span class="dash-streak-num" id="streak-count">0 jour</span>
+        <span class="dash-streak-sub">de série</span>
+      </div>
+      <div class="dash-streak-bar-wrap">
+        <div class="dash-streak-bar" id="dash-streak-bar"></div>
+      </div>
+    </div>
+
+    <!-- HABITUDES (tâches récurrentes, suivi 7 jours) -->
+    <div id="habits-wrap" style="display:none;margin-bottom:16px;">
+      <div class="dash-section-label"><span><i class="fa-solid fa-repeat"></i> Habitudes</span></div>
+      <div id="habits-list"></div>
+    </div>
+
+    <!-- STATS COMPACTES PREMIUM -->
+    <div class="dash-stats-row">
+      <div class="dash-stat-pill blue">
+        <span class="dash-stat-num" id="stat-remaining">0</span>
+        <span class="dash-stat-lbl">Restantes</span>
+      </div>
+      <div class="dash-stat-pill green">
+        <span class="dash-stat-num" id="stat-done">0</span>
+        <span class="dash-stat-lbl">Réussies</span>
+      </div>
+      <div class="dash-stat-pill red">
+        <span class="dash-stat-num" id="stat-missed">0</span>
+        <span class="dash-stat-lbl">Manquées</span>
+      </div>
+    </div>
+
+    <!-- PROGRESSION HEBDO PREMIUM -->
+    <div class="dash-week-card">
+      <div class="dash-week-header">
+        <div>
+          <div class="dash-week-label">Cette semaine</div>
+          <div class="dash-week-pct" id="ring-pct">0%</div>
+        </div>
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle stroke="rgba(255,255,255,0.15)" stroke-width="5" fill="none" cx="28" cy="28" r="22"/>
+          <circle id="ring-fill" stroke="#fff" stroke-width="5" fill="none" cx="28" cy="28" r="22"
+            stroke-dasharray="138" stroke-dashoffset="138"
+            stroke-linecap="round" transform="rotate(-90 28 28)"/>
+        </svg>
+      </div>
+      <div class="dash-bars-row">
+        <div class="week-bars" id="week-bars"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SCREEN 2: TÂCHES -->
+  <div class="screen" id="screen-tasks">
+    <div class="section-title-row">
+      <div class="section-title">Mes tâches</div>
+      <div style="display:flex;gap:8px;">
+        <button class="advanced-filter-btn" id="memos-btn" onclick="goToMemos()" title="Mémos"><i class="fa-solid fa-note-sticky"></i></button>
+        <button class="advanced-filter-btn" id="view-toggle-btn" onclick="toggleTaskView()" title="Vue Kanban"><i class="fa-solid fa-table-columns"></i></button>
+        <button class="advanced-filter-btn" id="advanced-filter-btn" onclick="toggleAdvancedFilters()"><i class="fa-solid fa-sliders"></i></button>
+      </div>
+    </div>
+    <div class="filter-tabs" id="filter-tabs-row">
+      <button class="filter-tab active" onclick="filterTasks('today', this)">Aujourd'hui</button>
+      <button class="filter-tab" onclick="filterTasks('week', this)">Cette semaine</button>
+      <button class="filter-tab" onclick="filterTasks('all', this)">Toutes</button>
+      <button class="filter-tab" onclick="filterTasks('done', this)">Terminées</button>
+    </div>
+
+    <div class="advanced-filters-panel" id="advanced-filters-panel" style="display:none;">
+      <div class="field-label">Liste</div>
+      <select class="field-input" id="filter-list-select" onchange="applyAdvancedFilters()">
+        <option value="">Toutes les listes</option>
+      </select>
+      <div class="field-label">Priorité minimum</div>
+      <div class="priority-picker" id="filter-priority-picker">
+        <button class="priority-opt selected" data-pri="0" onclick="selectFilterPriority(this)" title="Toutes"><i class="fa-regular fa-flag"></i></button>
+        <button class="priority-opt" data-pri="1" onclick="selectFilterPriority(this)" title="Basse+"><i class="fa-solid fa-flag" style="color:#94a3b8;"></i></button>
+        <button class="priority-opt" data-pri="2" onclick="selectFilterPriority(this)" title="Moyenne+"><i class="fa-solid fa-flag" style="color:#3b82f6;"></i></button>
+        <button class="priority-opt" data-pri="3" onclick="selectFilterPriority(this)" title="Haute+"><i class="fa-solid fa-flag" style="color:#f97316;"></i></button>
+        <button class="priority-opt" data-pri="4" onclick="selectFilterPriority(this)" title="Urgente"><i class="fa-solid fa-flag" style="color:#ef4444;"></i></button>
+      </div>
+      <button class="btn-secondary" style="width:100%;padding:10px;border-radius:10px;margin-top:8px;font-size:13px;" onclick="resetAdvancedFilters()">Réinitialiser les filtres</button>
+    </div>
+
+    <div id="task-list"></div>
+    <div id="kanban-board" style="display:none;"></div>
+  </div>
+
+  <!-- SCREEN MÉMOS -->
+  <div class="screen" id="screen-memos">
+    <!-- Vue liste -->
+    <div id="memos-list-view">
+      <div class="section-title-row">
+        <div class="section-title-row-left">
+          <button class="advanced-filter-btn" onclick="goTo('tasks')" title="Retour aux tâches"><i class="fa-solid fa-arrow-left"></i></button>
+          <div class="section-title">Mémos</div>
+        </div>
+        <button class="advanced-filter-btn" onclick="openMemoEditor()" title="Nouveau mémo"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div id="memos-list"></div>
+    </div>
+
+    <!-- Vue édition (zone de texte libre, pas de champs structurés) -->
+    <div id="memo-editor-view" style="display:none;">
+      <div class="section-title-row">
+        <button class="advanced-filter-btn" onclick="closeMemoEditor()" title="Retour"><i class="fa-solid fa-arrow-left"></i></button>
+        <div style="display:flex;gap:8px;">
+          <button class="advanced-filter-btn" id="memo-mic-btn" onclick="toggleMemoRecording()" title="Enregistrement vocal"><i class="fa-solid fa-microphone"></i></button>
+          <button class="advanced-filter-btn" id="memo-delete-btn" onclick="confirmDeleteMemo()" style="display:none;" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+      <textarea id="memo-textarea" class="memo-textarea" placeholder="Écris ton mémo…" oninput="autoSaveMemo()"></textarea>
+
+      <!-- Enregistrement en cours -->
+      <div id="memo-recording-indicator" class="memo-recording-indicator" style="display:none;">
+        <span class="memo-recording-dot"></span> Enregistrement… <span id="memo-recording-time">0:00</span>
+      </div>
+
+      <!-- Lecteur audio du mémo (si un enregistrement existe) -->
+      <div id="memo-audio-player" class="memo-audio-player" style="display:none;">
+        <button class="memo-audio-play-btn" id="memo-audio-play-btn" onclick="toggleMemoAudioPlayback()"><i class="fa-solid fa-play"></i></button>
+        <input type="range" id="memo-audio-seek" class="music-seek" min="0" max="100" value="0" />
+        <span id="memo-audio-duration" class="memo-audio-duration">0:00</span>
+        <button class="memo-audio-delete-btn" onclick="deleteMemoAudio()" title="Supprimer l'audio"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: CALENDRIER -->
+  <div class="screen" id="screen-calendar">
+    <div class="section-title">Calendrier</div>
+    <div class="card">
+      <div class="cal-nav">
+        <button class="icon-btn" onclick="changeMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="cal-month" id="cal-month-label"></div>
+        <button class="icon-btn" onclick="changeMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+      <div class="calendar-grid" id="cal-day-names"></div>
+      <div class="calendar-grid" id="cal-grid"></div>
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin-top:18px;"><i class="fa-solid fa-calendar-day"></i> Aujourd'hui</div>
+    <div id="today-tasks-list" style="margin-bottom:18px;"></div>
+
+    <div class="history-tabs">
+      <button class="history-tab active" onclick="filterHistory('done', this)"><i class="fa-solid fa-circle-check"></i> Terminées</button>
+      <button class="history-tab" onclick="filterHistory('deleted', this)"><i class="fa-solid fa-trash"></i> Supprimées</button>
+      <button class="history-tab" onclick="filterHistory('missed', this)"><i class="fa-solid fa-clock-rotate-left"></i> Non faites</button>
+      <button class="history-tab" onclick="filterHistory('skipped', this)"><i class="fa-solid fa-forward-step"></i> Sautées</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- SCREEN 4: ÉQUIPES -->
+  <div class="screen" id="screen-teams">
+    <div class="section-title">Équipes</div>
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+      <button class="btn-primary" style="flex:1;padding:12px;border-radius:12px;font-size:14px;" onclick="openCreateTeam()"><i class="fa-solid fa-plus"></i> Créer une équipe</button>
+      <button class="btn-secondary" style="flex:1;padding:12px;border-radius:12px;font-size:14px;" onclick="openJoinTeam()"><i class="fa-solid fa-link"></i> Rejoindre</button>
+    </div>
+    <div id="teams-list"></div>
+  </div>
+
+  <!-- SCREEN MUSIQUE -->
+  <div class="screen" id="screen-music">
+    <div class="section-title"><i class="fa-solid fa-music"></i> Musique</div>
+
+    <!-- LECTEUR PREMIUM -->
+    <div class="music-player-premium" id="music-now-playing" style="display:none;">
+      <div class="music-player-glow"></div>
+      <div class="music-player-content">
+        <div class="music-disc-premium" id="music-disc"><i class="fa-solid fa-compact-disc"></i></div>
+
+        <div class="music-visualizer" id="music-visualizer">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div id="music-current-title" class="music-current-title-premium">Aucun morceau</div>
+        <div id="music-current-sub" class="music-current-sub-premium">—</div>
+
+        <div class="music-progress-wrap">
+          <input type="range" id="music-seek" min="0" max="100" value="0" class="music-seek progress-seek" />
+          <div class="music-time-row">
+            <span id="music-time-elapsed">0:00</span>
+            <span id="music-time-remaining">-0:00</span>
+          </div>
+        </div>
+
+        <div class="music-controls-premium">
+          <button class="music-ctrl-btn-premium" onclick="musicToggleLoop()" id="music-loop-btn"><i class="fa-solid fa-repeat"></i></button>
+          <button class="music-ctrl-btn-premium" onclick="musicPrev()"><i class="fa-solid fa-backward-step"></i></button>
+          <button class="music-play-btn-premium" id="music-play-btn" onclick="musicTogglePlay()"><i class="fa-solid fa-play"></i></button>
+          <button class="music-ctrl-btn-premium" onclick="musicNext()"><i class="fa-solid fa-forward-step"></i></button>
+          <button class="music-ctrl-btn-premium" onclick="stopMusicCompletely()" title="Arrêter"><i class="fa-solid fa-stop"></i></button>
+        </div>
+
+        <div class="music-volume-row" id="music-volume-row">
+          <i class="fa-solid fa-volume-low" id="music-volume-icon"></i>
+          <input type="range" id="music-volume" min="0" max="100" value="70" class="music-seek volume-seek" />
+        </div>
+        <div class="music-volume-ios-note" id="music-volume-ios-note" style="display:none;">
+          <i class="fa-solid fa-volume-high"></i> Règle le volume avec les boutons de ton téléphone
+        </div>
+
+        <!-- Minuteur de session -->
+        <div class="music-timer-row">
+          <span class="music-timer-label"><i class="fa-solid fa-hourglass-half"></i> Minuteur</span>
+          <div class="music-timer-opts" id="music-timer-opts">
+            <button class="music-timer-opt" onclick="setMusicSessionTimer(15, this)">15min</button>
+            <button class="music-timer-opt" onclick="setMusicSessionTimer(30, this)">30min</button>
+            <button class="music-timer-opt" onclick="setMusicSessionTimer(45, this)">45min</button>
+            <button class="music-timer-opt" onclick="setMusicSessionTimer(0, this)">Off</button>
+          </div>
+        </div>
+        <div class="music-timer-active" id="music-timer-active" style="display:none;">
+          <i class="fa-solid fa-clock"></i> Arrêt automatique dans <span id="music-timer-countdown">--:--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODE BIBLIOTHÈQUE SILENCIEUSE -->
+    <div class="library-mode-card" onclick="toggleLibraryMode()" id="library-mode-card">
+      <div class="library-mode-icon"><i class="fa-solid fa-book-open"></i></div>
+      <div class="library-mode-text">
+        <div class="library-mode-title">Mode Bibliothèque</div>
+        <div class="library-mode-sub">Ambiance + minuteur combinés, sans distraction</div>
+      </div>
+      <div class="toggle" id="library-mode-toggle"></div>
+    </div>
+
+    <label class="music-upload-card-premium">
+      <input type="file" id="music-upload-input" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac" multiple style="display:none" onchange="handleMusicUpload(event)" />
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <span>Ajouter des MP3 depuis mon téléphone</span>
+    </label>
+
+    <div class="section-title" style="font-size:15px;">Catégories</div>
+    <div id="my-music-list"></div>
+    <div id="ambient-music-list"></div>
+  </div>
+
+  <!-- SCREEN 5: PARAMÈTRES -->
+  <div class="screen" id="screen-settings">
+    <div class="settings-avatar-wrap">
+      <div class="settings-avatar" id="settings-avatar-big" onclick="changeAvatar()" style="cursor:pointer;">
+        ?
+      </div>
+      <div class="settings-name" id="settings-name" onclick="changeAvatar()" style="cursor:pointer;">Chargement…</div>
+      <div class="settings-email" id="settings-email"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Avatar pour les groupes</div>
+      <div class="card" style="padding:14px;">
+        <div class="field-label" style="margin-bottom:10px;">Visible uniquement par les membres de tes équipes</div>
+        <div class="group-avatar-grid" id="group-avatar-grid"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Apparence</div>
+      <div class="card" style="padding:14px;margin-bottom:10px;">
+        <div class="field-label" style="margin-bottom:10px;">Thème</div>
+        <div class="theme-switch">
+          <button class="theme-opt active" id="theme-dark-btn" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Sombre</button>
+          <button class="theme-opt" id="theme-light-btn" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i> Clair</button>
+        </div>
+      </div>
+      <div class="card" style="padding:14px;">
+        <div class="field-label" style="margin-bottom:10px;">Couleur d'accent</div>
+        <div style="display:flex;gap:14px;" id="accent-color-picker">
+          <div class="accent-dot selected" data-accent="blue" onclick="setAccentColor('blue')"><div class="accent-dot-inner" style="background:#2563eb;"></div></div>
+          <div class="accent-dot" data-accent="green" onclick="setAccentColor('green')"><div class="accent-dot-inner" style="background:#16a34a;"></div></div>
+          <div class="accent-dot" data-accent="orange" onclick="setAccentColor('orange')"><div class="accent-dot-inner" style="background:#ea580c;"></div></div>
+          <div class="accent-dot" data-accent="purple" onclick="setAccentColor('purple')"><div class="accent-dot-inner" style="background:#7c3aed;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Mon compte</div>
+      <div class="settings-item" onclick="openEditPseudo()">
+        <div class="settings-item-icon" style="background:#2563eb22;"><i class="fa-solid fa-user-pen"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Modifier le pseudo</div>
+        </div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+      <div class="settings-item" onclick="openEditPassword()">
+        <div class="settings-item-icon" style="background:#f9731622;"><i class="fa-solid fa-key"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Changer le mot de passe</div>
+        </div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Notifications</div>
+      <div class="settings-item">
+        <div class="settings-item-icon" style="background:#22c55e22;"><i class="fa-solid fa-bell"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Notifications activées</div>
+          <div class="settings-item-sub" id="notif-status-text">Vérification…</div>
+        </div>
+        <div class="toggle on" id="notif-toggle" onclick="toggleNotifications()"></div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-icon" style="background:#8b5cf622;"><i class="fa-solid fa-users"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Notifs des groupes</div>
+        </div>
+        <div class="toggle on" id="group-notif-toggle" onclick="toggleGroupNotif()"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Fonctionnalités</div>
+      <div class="settings-item">
+        <div class="settings-item-icon" style="background:#ec489922;"><i class="fa-solid fa-music"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Musique pendant l'étude</div>
+          <div class="settings-item-sub">Ajoute un onglet Musique dans la navigation</div>
+        </div>
+        <div class="toggle" id="music-feature-toggle" onclick="toggleMusicFeature()"></div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-icon" style="background:#0ea5e922;"><i class="fa-solid fa-expand"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Plein écran stable</div>
+          <div class="settings-item-sub">À activer si l'app ne remplit pas tout l'écran</div>
+        </div>
+        <div class="toggle" id="fullscreen-toggle" onclick="toggleFullscreenMode()"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Mode concentration</div>
+      <div class="help-category">
+        <div class="help-category-header" onclick="toggleConcentrationCategory('volume')">
+          <div class="help-category-icon" style="background:#6366f1;"><i class="fa-solid fa-volume-low"></i></div>
+          <div class="help-category-title">Volume réduit pendant le focus</div>
+          <i class="fa-solid fa-chevron-down" id="concentration-volume-chevron" style="color:var(--text3);font-size:12px;"></i>
+        </div>
+        <div class="help-category-body" id="concentration-volume-body" style="display:none;">
+          <p style="margin-bottom:10px;">Le volume de la musique baisse automatiquement au démarrage d'une tâche, pour t'aider à rester concentré.</p>
+          <input type="range" id="concentration-volume-slider" min="0" max="100" value="50" class="music-seek" oninput="updateConcentrationVolumeLabel(this.value)" onchange="saveConcentrationSettings()" />
+          <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:6px;" id="concentration-volume-label">50%</div>
+          <p id="concentration-volume-ios-note" style="display:none;font-size:11px;color:var(--text3);margin-top:8px;"><i class="fa-solid fa-circle-info"></i> Sur iPhone, ce réglage n'a pas d'effet (restriction système Apple) — utilise les boutons physiques de volume.</p>
+        </div>
+      </div>
+      <div class="help-category">
+        <div class="help-category-header" onclick="toggleConcentrationCategory('dimming')">
+          <div class="help-category-icon" style="background:#1e293b;"><i class="fa-solid fa-moon"></i></div>
+          <div class="help-category-title">Voile d'assombrissement</div>
+          <i class="fa-solid fa-chevron-down" id="concentration-dimming-chevron" style="color:var(--text3);font-size:12px;"></i>
+        </div>
+        <div class="help-category-body" id="concentration-dimming-body" style="display:none;">
+          <p style="margin-bottom:10px;">Simule une luminosité réduite à l'écran pendant le focus, pour limiter les distractions visuelles.</p>
+          <div class="toggle-row" style="margin-bottom:12px;">
+            <span class="toggle-label" style="font-size:13px;">Activer le voile</span>
+            <div class="toggle on" id="dimming-toggle" onclick="toggleDimmingFeature()"></div>
+          </div>
+          <input type="range" id="concentration-dim-slider" min="0" max="80" value="35" class="music-seek" oninput="updateConcentrationDimLabel(this.value)" onchange="saveConcentrationSettings()" />
+          <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:6px;" id="concentration-dim-label">Intensité : 35%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Confidentialité</div>
+      <div class="settings-item">
+        <div class="settings-item-icon" style="background:#6366f122;"><i class="fa-solid fa-eye-slash"></i></div>
+        <div class="settings-item-text">
+          <div class="settings-item-label">Masquer mon pseudo</div>
+          <div class="settings-item-sub">Les autres membres ne voient pas votre pseudo</div>
+        </div>
+        <div class="toggle" id="hide-pseudo-toggle" onclick="toggleHidePseudo()"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Support</div>
+      <div class="settings-item" onclick="openHelp()">
+        <div class="settings-item-icon" style="background:#0ea5e922;"><i class="fa-solid fa-circle-question"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label">Aide & tutoriel</div></div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+      <div class="settings-item" onclick="openBugReport()">
+        <div class="settings-item-icon" style="background:#ef444422;"><i class="fa-solid fa-bug"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label">Signaler un bug</div></div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+      <div class="settings-item" onclick="openThanksModal()">
+        <div class="settings-item-icon" style="background:#ec489922;"><i class="fa-solid fa-heart"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label">Remerciements</div></div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Compte</div>
+      <div class="settings-item" onclick="doLogout()">
+        <div class="settings-item-icon" style="background:#ef444422;"><i class="fa-solid fa-right-from-bracket"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label" style="color:var(--red);">Déconnexion</div></div>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding:24px 0 8px;color:var(--text3);font-size:12px;">
+      TRIVO v4.12
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-screen="dashboard" onclick="goTo('dashboard')">
+      <span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span>
+      <span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-item" data-screen="tasks" onclick="goTo('tasks')">
+      <span class="nav-icon"><i class="fa-solid fa-list-check"></i></span>
+      <span class="nav-label">Tâches</span>
+    </button>
+    <button class="nav-item" data-screen="calendar" onclick="goTo('calendar')">
+      <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
+      <span class="nav-label">Agenda</span>
+    </button>
+    <button class="nav-item" data-screen="teams" onclick="goTo('teams')">
+      <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
+      <span class="nav-label">Équipes</span>
+      <span class="nav-dot" id="teams-dot" style="display:none"></span>
+    </button>
+    <button class="nav-item" data-screen="music" id="nav-music-btn" onclick="goTo('music')" style="display:none">
+      <span class="nav-icon"><i class="fa-solid fa-music"></i></span>
+      <span class="nav-label">Musique</span>
+    </button>
+    <button class="nav-item" data-screen="settings" onclick="goTo('settings')">
+      <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
+      <span class="nav-label">Paramètres</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- FAB (add task) -->
+<button class="fab" id="fab-add" style="display:none" onclick="openTaskModal()">+</button>
+
+<!-- MODAL TÂCHE -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Nouvelle tâche</div>
+
+    <div class="field-label">Titre *</div>
+    <input class="field-input" id="task-title-input" placeholder="Ex: Mathématiques demain 18h #urgent @maison" maxlength="80" oninput="parseNaturalLanguageInput()" />
+
+    <div class="field-row">
+      <div>
+        <div class="field-label">Liste (facultatif)</div>
+        <input class="field-input" id="task-list-input" placeholder="Ex: Perso, Maths…" list="task-list-suggestions" maxlength="30" />
+        <datalist id="task-list-suggestions"></datalist>
+      </div>
+      <div>
+        <div class="field-label">Priorité</div>
+        <div class="priority-picker" id="priority-picker">
+          <button class="priority-opt" data-pri="0" onclick="selectPriority(this)" title="Aucune"><i class="fa-regular fa-flag"></i></button>
+          <button class="priority-opt" data-pri="1" onclick="selectPriority(this)" title="Basse"><i class="fa-solid fa-flag" style="color:#94a3b8;"></i></button>
+          <button class="priority-opt" data-pri="2" onclick="selectPriority(this)" title="Moyenne"><i class="fa-solid fa-flag" style="color:#3b82f6;"></i></button>
+          <button class="priority-opt" data-pri="3" onclick="selectPriority(this)" title="Haute"><i class="fa-solid fa-flag" style="color:#f97316;"></i></button>
+          <button class="priority-opt" data-pri="4" onclick="selectPriority(this)" title="Urgente"><i class="fa-solid fa-flag" style="color:#ef4444;"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-label">Contenu (facultatif)</div>
+    <textarea class="field-input" id="task-content-input" placeholder="Détails, exercices à faire…" rows="3"></textarea>
+
+    <div class="field-row">
+      <div>
+        <div class="field-label">Date</div>
+        <input class="field-input" type="date" id="task-date-input" />
+      </div>
+      <div>
+        <div class="field-label">Heure</div>
+        <input class="field-input" type="time" id="task-time-input" />
+      </div>
+    </div>
+
+    <div class="field-label">Durée estimée</div>
+    <div class="duration-row">
+      <div class="duration-field">
+        <input class="field-input" type="number" id="task-hours-input" placeholder="0" min="0" max="24" step="1" oninput="clampDurationFields()" />
+        <span class="duration-unit">h</span>
+      </div>
+      <div class="duration-field">
+        <input class="field-input" type="number" id="task-minutes-input" placeholder="0" min="0" max="59" step="1" oninput="clampDurationFields()" />
+        <span class="duration-unit">min</span>
+      </div>
+    </div>
+
+    <div class="field-label">Récurrence (facultatif)</div>
+    <div class="recurrence-picker" id="recurrence-picker">
+      <button class="recurrence-opt selected" data-rec="" onclick="selectRecurrence(this)">Aucune</button>
+      <button class="recurrence-opt" data-rec="daily" onclick="selectRecurrence(this)"><i class="fa-solid fa-rotate"></i> Quotidien</button>
+      <button class="recurrence-opt" data-rec="weekdays" onclick="selectRecurrence(this)"><i class="fa-solid fa-calendar-week"></i> Jours précis</button>
+      <button class="recurrence-opt" data-rec="interval" onclick="selectRecurrence(this)"><i class="fa-solid fa-repeat"></i> Tous les X jours</button>
+      <button class="recurrence-opt" data-rec="monthly" onclick="selectRecurrence(this)"><i class="fa-solid fa-rotate"></i> Mensuel</button>
+      <button class="recurrence-opt" data-rec="last-day-month" onclick="selectRecurrence(this)"><i class="fa-solid fa-calendar-days"></i> Dernier jour du mois</button>
+    </div>
+
+    <!-- Sous-options affichées selon le type de récurrence choisi -->
+    <div id="recurrence-weekdays-picker" class="recurrence-suboptions" style="display:none;">
+      <div class="weekday-picker">
+        <button class="weekday-opt" data-day="1" onclick="toggleWeekday(this)">L</button>
+        <button class="weekday-opt" data-day="2" onclick="toggleWeekday(this)">M</button>
+        <button class="weekday-opt" data-day="3" onclick="toggleWeekday(this)">M</button>
+        <button class="weekday-opt" data-day="4" onclick="toggleWeekday(this)">J</button>
+        <button class="weekday-opt" data-day="5" onclick="toggleWeekday(this)">V</button>
+        <button class="weekday-opt" data-day="6" onclick="toggleWeekday(this)">S</button>
+        <button class="weekday-opt" data-day="0" onclick="toggleWeekday(this)">D</button>
+      </div>
+    </div>
+    <div id="recurrence-interval-picker" class="recurrence-suboptions" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;color:var(--text2);">Tous les</span>
+        <input class="field-input" type="number" id="recurrence-interval-input" min="2" max="90" value="2" style="width:70px;text-align:center;" />
+        <span style="font-size:13px;color:var(--text2);">jours</span>
+      </div>
+    </div>
+
+    <div class="field-label">Tags (facultatif)</div>
+    <div class="tags-input-row">
+      <input class="field-input" id="task-tag-input" placeholder="Ex: Urgent, Maths…" onkeydown="if(event.key==='Enter'){event.preventDefault();addTaskTag();}" />
+      <button class="tag-add-btn" onclick="addTaskTag()"><i class="fa-solid fa-plus"></i></button>
+    </div>
+    <div class="task-tags-row" id="task-tags-preview"></div>
+
+    <div class="field-label">Sous-tâches (facultatif)</div>
+    <div class="tags-input-row">
+      <input class="field-input" id="subtask-input" placeholder="Ex: Réviser le chapitre 1" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}" />
+      <button class="tag-add-btn" onclick="addSubtask()"><i class="fa-solid fa-plus"></i></button>
+    </div>
+    <div id="subtask-preview-list"></div>
+
+    <div class="toggle-row">
+      <span class="toggle-label"><i class="fa-solid fa-bell"></i> Notification (5 min avant)</span>
+      <div class="toggle on" id="alarm-toggle" onclick="this.classList.toggle('on');toggleReminderSubOptions();"></div>
+    </div>
+
+    <div id="reminder-suboptions" class="recurrence-suboptions">
+      <div class="toggle-row" style="margin-bottom:0;">
+        <span class="toggle-label" style="font-size:13px;"><i class="fa-solid fa-calendar-day"></i> Me prévenir 1 jour avant</span>
+        <div class="toggle" id="reminder-veille-toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="toggle-row" style="margin-top:10px;margin-bottom:0;">
+        <span class="toggle-label" style="font-size:13px;"><i class="fa-solid fa-clock-rotate-left"></i> Me rappeler chaque heure</span>
+        <div class="toggle" id="reminder-repeat-toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;">Le rappel répété s'arrête automatiquement dès que la tâche est terminée.</div>
+    </div>
+
+    <div class="field-label">Couleur</div>
+    <div class="color-picker" id="color-picker">
+      <div class="color-dot selected" style="background:#2563eb" data-color="#2563eb" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#22c55e" data-color="#22c55e" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#ef4444" data-color="#ef4444" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#f97316" data-color="#f97316" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#a855f7" data-color="#a855f7" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#eab308" data-color="#eab308" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#ec4899" data-color="#ec4899" onclick="selectColor(this)"></div>
+      <div class="color-dot" style="background:#14b8a6" data-color="#14b8a6" onclick="selectColor(this)"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeTaskModal()">Annuler</button>
+      <button class="btn-primary" style="flex:2" onclick="saveTask()">Enregistrer</button>
+      <button class="btn-danger" id="delete-task-btn" style="display:none" onclick="deleteCurrentTask()"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉQUIPE -->
+<div class="modal-overlay" id="team-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="team-modal-title">Créer une équipe</div>
+    <div class="field-label">Nom de l'équipe</div>
+    <input class="field-input" id="team-name-input" placeholder="Ex: Groupe de révision" maxlength="40" />
+    <div id="join-id-wrap" style="display:none">
+      <div class="field-label">ID de l'équipe</div>
+      <input class="field-input" id="team-join-id-input" placeholder="Colle l'ID partagé ici" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeTeamModal()">Annuler</button>
+      <button class="btn-primary" style="flex:2" id="team-modal-action-btn" onclick="confirmTeamAction()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TEAM DETAIL -->
+<div class="modal-overlay" id="team-detail-modal">
+  <div class="modal team-chat-modal">
+    <div class="team-chat-header">
+      <button class="icon-btn" onclick="closeTeamDetailModal()"><i class="fa-solid fa-arrow-left"></i></button>
+      <div class="team-chat-avatar" id="team-chat-avatar">??</div>
+      <div class="team-chat-info">
+        <div class="team-chat-name" id="team-detail-name">Équipe</div>
+        <div class="team-chat-sub" id="team-chat-members-count">0 membre</div>
+      </div>
+      <button class="icon-btn" onclick="openTeamInfoModal()"><i class="fa-solid fa-circle-info"></i></button>
+    </div>
+
+    <div class="team-chat-feed" id="team-chat-feed"></div>
+
+    <div class="team-chat-inputbar">
+      <button class="team-chat-addbtn" onclick="openTeamTaskModal()"><i class="fa-solid fa-plus"></i></button>
+      <textarea class="team-chat-input" id="team-chat-input" placeholder="Écrire un message…" rows="1" oninput="handleTypingInput(); autoGrowChatInput(this);" onkeydown="if(event.key==='Enter' && !event.shiftKey && window.matchMedia('(pointer: fine)').matches){event.preventDefault();sendTeamMessage();}"></textarea>
+      <button class="team-chat-sendbtn" onclick="sendTeamMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INFOS ÉQUIPE (membres, id, quitter) -->
+<div class="modal-overlay" id="team-info-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Informations</div>
+    <div class="card" style="margin-bottom:14px;" id="team-id-card">
+      <div class="card-title">ID de l'équipe (partager)</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="team-detail-id" style="font-family:monospace;font-size:15px;color:var(--blue-light);flex:1;overflow:hidden;text-overflow:ellipsis;"></div>
+        <button class="btn-secondary" id="copy-id-btn" style="padding:8px 14px;border-radius:8px;font-size:12px;" onclick="copyTeamId()">Copier</button>
+      </div>
+      <div id="owner-id-copy-toggle-row" style="display:none;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--text2);">Autoriser les membres à copier l'ID</span>
+        <div class="toggle on" id="allow-id-copy-toggle" onclick="toggleAllowIdCopy()"></div>
+      </div>
+    </div>
+    <div class="card-title">Membres</div>
+    <div id="team-members-list" style="margin-bottom:14px;"></div>
+    <div id="pending-members-wrap" style="display:none">
+      <div class="card-title" style="margin-bottom:8px;"><i class="fa-solid fa-hourglass-half"></i> En attente de validation</div>
+      <div id="pending-members-list" style="margin-bottom:14px;"></div>
+    </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-secondary" onclick="closeModal('team-info-modal')">Fermer</button>
+      <button class="btn-danger" onclick="leaveTeam()">Quitter l'équipe</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TÂCHE ÉQUIPE -->
+<div class="modal-overlay" id="team-task-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Tâche d'équipe</div>
+    <div class="field-label">Titre *</div>
+    <input class="field-input" id="team-task-title" placeholder="Titre de la tâche" />
+    <div class="field-label">Contenu</div>
+    <textarea class="field-input" id="team-task-content" placeholder="Description…" rows="3"></textarea>
+    <div class="field-row">
+      <div>
+        <div class="field-label">Date</div>
+        <input class="field-input" type="date" id="team-task-date" />
+      </div>
+      <div>
+        <div class="field-label">Heure</div>
+        <input class="field-input" type="time" id="team-task-time" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeTeamTaskModal()">Annuler</button>
+      <button class="btn-primary" style="flex:2" onclick="saveTeamTask()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AIDE -->
+<div class="modal-overlay" id="help-modal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-circle-question"></i> Aide & tutoriel</div>
+    <div id="help-categories"></div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-primary" style="flex:1;padding:14px;" onclick="closeModal('help-modal')">Compris !</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BUG -->
+<div class="modal-overlay" id="bug-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🐛 Signaler un bug</div>
+    <div class="field-label">Description du bug</div>
+    <textarea class="field-input" id="bug-desc" placeholder="Décris ce qui s'est passé…" rows="5"></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('bug-modal')">Annuler</button>
+      <button class="btn-primary" style="flex:2;padding:14px;" onclick="submitBug()">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CROP PHOTO DE PROFIL (façon WhatsApp) -->
+<div class="modal-overlay" id="crop-modal">
+  <div class="modal crop-modal-content">
+    <div class="modal-title" style="text-align:center;">Recadrer la photo</div>
+    <div class="crop-canvas-wrap" id="crop-canvas-wrap">
+      <canvas id="crop-canvas" width="320" height="320"></canvas>
+      <div class="crop-circle-overlay"></div>
+    </div>
+    <div class="crop-zoom-row">
+      <i class="fa-solid fa-magnifying-glass-minus" style="color:var(--text3);font-size:12px;"></i>
+      <input type="range" id="crop-zoom-slider" class="music-seek" min="100" max="300" value="100" oninput="updateCropZoom(this.value)" />
+      <i class="fa-solid fa-magnifying-glass-plus" style="color:var(--text3);font-size:12px;"></i>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn-secondary" onclick="cancelCrop()">Annuler</button>
+      <button class="btn-primary" style="flex:2;" onclick="confirmCrop()">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CHOIX "MA JOURNÉE" -->
+<div class="modal-overlay" id="my-day-modal">
+  <div class="modal" style="max-height:75vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-sun"></i> Choisir pour aujourd'hui</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">Sélectionne les tâches sur lesquelles tu veux te concentrer aujourd'hui.</div>
+    <div id="my-day-picker-list"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn-secondary" onclick="closeModal('my-day-modal')">Fermer</button>
+      <button class="btn-primary" style="flex:2;" onclick="saveMyDaySelection()">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REMERCIEMENTS -->
+<div class="modal-overlay" id="thanks-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-heart" style="color:#ec4899;"></i> Remerciements</div>
+    <div style="text-align:center;padding:8px 4px 4px;">
+      <p style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:20px;">
+        TRIVO n'aurait pas pu voir le jour sans le soutien et les encouragements de personnes précieuses.
+        Un immense merci à :
+      </p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+        <div class="thanks-name-card"><i class="fa-solid fa-star" style="color:#facc15;"></i> DABILA</div>
+        <div class="thanks-name-card"><i class="fa-solid fa-star" style="color:#facc15;"></i> SEKA</div>
+        <div class="thanks-name-card"><i class="fa-solid fa-star" style="color:#facc15;"></i> ISRAËL</div>
+        <div class="thanks-name-card"><i class="fa-solid fa-star" style="color:#facc15;"></i> ELIÉE</div>
+      </div>
+      <div class="thanks-credits">
+        <div class="thanks-credit-line"><i class="fa-solid fa-lightbulb" style="color:#facc15;"></i> Idée originale — <strong>Kadjane Berenger</strong></div>
+        <div class="thanks-credit-line"><i class="fa-solid fa-palette" style="color:#a78bfa;"></i> Choix de design — <strong>Sylla Audrey</strong></div>
+        <div class="thanks-credit-line"><i class="fa-solid fa-code" style="color:#60a5fa;"></i> Développement — & <strong>Kadjane Berenger</strong></div>
+      </div>
+      <p style="font-size:13px;color:var(--text3);font-style:italic;margin-top:18px;">
+        Merci d'avoir cru en ce projet du début à la fin. 💙
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" style="width:100%;padding:14px;" onclick="closeModal('thanks-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- VOILE D'ASSOMBRISSEMENT (mode concentration) -->
+<div id="concentration-overlay"></div>
+
+<!-- FIREBASE -->
+<!-- Pont Firebase : seul module ES du projet, expose tout sur window -->
+<script type="module" src="firebase-bridge.js"></script>
+<!-- Scripts classiques, chargés dans l'ordre avec defer pour garantir qu'ils
+     s'exécutent après le pont Firebase ET dans l'ordre où ils apparaissent ici -->
+<script defer src="core.js"></script>
+<script defer src="sync.js"></script>
+<script defer src="dashboard.js"></script>
+<script defer src="tasks.js"></script>
+<script defer src="memos.js"></script>
+<script defer src="calendar.js"></script>
+<script defer src="teams.js"></script>
+<script defer src="settings.js"></script>
+<script defer src="notifications.js"></script>
+<script defer src="music.js"></script>
+<script defer src="focus.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "_comment": "Liste ici le nom exact de chaque fichier MP3 que tu as déposé dans chaque dossier. L'app lira ce fichier pour afficher le menu Musique par catégorie.",
+  "pluie-douce": {
+    "label": "Pluie douce",
+    "icon": "fa-cloud-rain",
+    "files": ["pluie-douce.mp3"]
+  },
+  "concentration": {
+    "label": "Concentration",
+    "icon": "fa-brain",
+    "files": ["concentration.mp3"]
+  },
+  "foret": {
+    "label": "Forêt",
+    "icon": "fa-tree",
+    "files": ["foret.mp3"]
+  },
+  "calme": {
+    "label": "Calme",
+    "icon": "fa-spa",
+    "files": ["calme.mp3"]
+  }
+}
