@@ -467,6 +467,18 @@ function parseNaturalLanguageInput() {
   const input = document.getElementById('task-title-input');
   let text = input.value;
 
+  // Ne rien faire si le texte se termine par un espace — l'utilisateur
+  // est en train de saisir un nouveau mot, on ne doit pas interférer.
+  if (text.endsWith(' ')) return;
+
+  // Ne rien faire si aucun mot-clé déclencheur n'est présent
+  const hasKeyword = text.includes('#') || text.includes('@')
+    || /\b\d{1,2}h\d*\b/i.test(text)
+    || /\b(demain|aujourd'?hui|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|urgent)\b/i.test(text);
+  if (!hasKeyword) return;
+
+  const cursorPos = input.selectionStart;
+
   // Tag (#xxx) → ajouté à tempTaskTags s'il n'existe pas déjà
   const tagMatch = text.match(/#(\w+)/);
   if (tagMatch) {
@@ -515,7 +527,7 @@ function parseNaturalLanguageInput() {
         const d = new Date();
         const todayIdx = d.getDay();
         let diff = (weekdayMatch - todayIdx + 7) % 7;
-        if (diff === 0) diff = 7; // "lundi" dit un autre jour, pas aujourd'hui s'il est déjà passé dans la phrase
+        if (diff === 0) diff = 7;
         d.setDate(d.getDate() + diff);
         dateField.value = fmtDate(d);
         text = text.replace(new RegExp(`\\b${WEEKDAYS_FR[weekdayMatch]}\\b`, 'i'), '').trim();
@@ -523,19 +535,19 @@ function parseNaturalLanguageInput() {
     }
   }
 
-  // Priorité (!urgent, !important)
+  // Priorité (urgent)
   if (/\burgent\b/i.test(text)) {
     document.querySelectorAll('.priority-opt').forEach(d => d.classList.toggle('selected', d.dataset.pri==='4'));
     text = text.replace(/\burgent\b/i, '').trim();
   }
 
-  // Nettoyage final des espaces multiples laissés par les retraits
-  text = text.replace(/\s{2,}/g, ' ').trim();
-  if (text !== input.value) {
-    const cursorPos = input.selectionStart;
-    input.value = text;
-    // On replace le curseur à la fin pour ne pas gêner la saisie continue
-    input.setSelectionRange(text.length, text.length);
+  // Nettoyage des espaces multiples — seulement si le texte a changé
+  const cleaned = text.replace(/\s{2,}/g, ' ').trim();
+  if (cleaned !== input.value) {
+    input.value = cleaned;
+    // Replacement du curseur sans dépasser la longueur du texte nettoyé
+    const newPos = Math.min(cursorPos, cleaned.length);
+    input.setSelectionRange(newPos, newPos);
   }
 }
 
@@ -738,6 +750,9 @@ window.saveTask = async () => {
   const m = parseInt(document.getElementById('task-minutes-input').value) || 0;
   const now = Date.now();
 
+  // Capturer editingTaskId AVANT closeTaskModal qui le remet à null
+  const taskIdToEdit = editingTaskId;
+
   const data = {
     title,
     list: document.getElementById('task-list-input').value.trim() || null,
@@ -754,20 +769,21 @@ window.saveTask = async () => {
     tags: [...tempTaskTags],
     subtasks: tempSubtasks.map(s => ({...s})),
     uid: currentUser.uid,
-    updatedAt: now   // Date.now() pour IDB — Firebase reçoit serverTimestamp() au flush
+    updatedAt: now
   };
 
+  // Fermer le modal immédiatement — avant tout await
   closeTaskModal();
 
-  if (editingTaskId) {
-    const existing = tasks.find(x => x.id === editingTaskId) || {};
-    const updated = { ...existing, ...data, id: editingTaskId };
+  if (taskIdToEdit) {
+    const existing = tasks.find(x => x.id === taskIdToEdit) || {};
+    const updated = { ...existing, ...data, id: taskIdToEdit };
     await idbPut('tasks', updated);
-    tasks = tasks.map(x => x.id === editingTaskId ? updated : x);
+    tasks = tasks.map(x => x.id === taskIdToEdit ? updated : x);
     renderTaskList();
     if (taskViewMode === 'kanban') renderKanbanBoard();
     renderDashboard();
-    await queuePush('update', 'tasks', editingTaskId, data);
+    await queuePush('update', 'tasks', taskIdToEdit, data);
     if (navigator.onLine) await window.queueFlush();
     showToast('Tâche modifiée');
 
