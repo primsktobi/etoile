@@ -283,13 +283,10 @@ window.toggleSubtask = async (taskId, index) => {
   const subtasks = [...t.subtasks];
   subtasks[index] = { ...subtasks[index], done: !subtasks[index].done };
   const now = Date.now();
-  // 1. IDB display
   await idbPut('tasks', { ...t, subtasks, updatedAt: now });
-  // 2. Tableau local
   tasks = tasks.map(x => x.id===taskId ? { ...x, subtasks, updatedAt: now } : x);
-  // 3. Queue
+  renderTaskList();
   await queuePush('update', 'tasks', taskId, { subtasks });
-  // 4. Firebase si en ligne
   if (navigator.onLine) await window.queueFlush();
 };
 
@@ -309,13 +306,12 @@ window.toggleTask = async (id) => {
   if (!t) return;
   const newStatus = t.status==='done' ? 'pending' : 'done';
   const now = Date.now();
-  // 1. IDB display
   await idbPut('tasks', { ...t, status: newStatus, updatedAt: now });
-  // 2. Tableau local
   tasks = tasks.map(x => x.id===id ? { ...x, status: newStatus, updatedAt: now } : x);
-  // 3. Queue
+  renderTaskList();
+  if (taskViewMode === 'kanban') renderKanbanBoard();
+  renderDashboard();
   await queuePush('update', 'tasks', id, { status: newStatus });
-  // 4. Firebase si en ligne
   if (navigator.onLine) await window.queueFlush();
   showToast(newStatus==='done' ? 'Terminée !' : 'Rouverte');
   if (newStatus === 'done' && t.recurrence) await regenerateRecurringTask(t);
@@ -413,18 +409,14 @@ async function regenerateRecurringTask(t) {
 window.confirmDeleteTask = async (id) => {
   if (!confirm('Supprimer cette tâche ?')) return;
   const now = Date.now();
-  // 1. IDB display : soft-delete immédiat
   const t = tasks.find(x => x.id === id);
   if (t) await idbPut('tasks', { ...t, status: 'deleted', deletedAt: now, updatedAt: now });
-  // 2. Tableau local
   tasks = tasks.map(x => x.id === id ? { ...x, status: 'deleted', deletedAt: now } : x);
-  // 3. Queue
-  await queuePush('delete', 'tasks', id, {});
-  // 4. Firebase si en ligne
-  if (navigator.onLine) await window.queueFlush();
   renderTaskList();
   if (taskViewMode === 'kanban') renderKanbanBoard();
   renderDashboard();
+  await queuePush('delete', 'tasks', id, {});
+  if (navigator.onLine) await window.queueFlush();
   showToast('Tâche déplacée dans la corbeille');
 };
 
@@ -452,15 +444,11 @@ window.duplicateTask = async (id) => {
     timestamp: now,
     updatedAt: now
   };
-  // 1. IDB display
   await idbPut('tasks', copy);
-  // 2. Tableau local
   tasks.unshift(copy);
-  // 3. Queue
-  await queuePush('create', 'tasks', newId, copy);
-  // 4. Firebase si en ligne
-  if (navigator.onLine) await window.queueFlush();
   renderTaskList();
+  await queuePush('create', 'tasks', newId, copy);
+  if (navigator.onLine) await window.queueFlush();
   showToast('Tâche dupliquée — pense à lui donner une date');
 };
 
@@ -770,36 +758,29 @@ window.saveTask = async () => {
   };
 
   if (editingTaskId) {
-    // ── Mise à jour ──
-    // 1. IDB display : mise à jour immédiate (offline-first)
     const existing = tasks.find(x => x.id === editingTaskId) || {};
-    await idbPut('tasks', { ...existing, ...data, id: editingTaskId });
-    // 2. Queue : enregistre l'action pour Firebase
+    const updated = { ...existing, ...data, id: editingTaskId };
+    await idbPut('tasks', updated);
+    tasks = tasks.map(x => x.id === editingTaskId ? updated : x);
+    renderTaskList();
+    if (taskViewMode === 'kanban') renderKanbanBoard();
+    renderDashboard();
     await queuePush('update', 'tasks', editingTaskId, data);
-    // 3. Firebase : si en ligne, flush immédiatement
     if (navigator.onLine) await window.queueFlush();
     showToast('Tâche modifiée');
 
   } else {
-    // ── Création ──
-    // Génère un id côté client (format nanoid simplifié)
     const newId = _genId();
     const newTask = { ...data, id: newId, status: 'pending', timestamp: now };
-    // 1. IDB display
     await idbPut('tasks', newTask);
-    // 2. Mise à jour du tableau local pour affichage immédiat
     tasks.unshift(newTask);
-    // 3. Queue
+    renderTaskList();
+    if (taskViewMode === 'kanban') renderKanbanBoard();
+    renderDashboard();
     await queuePush('create', 'tasks', newId, newTask);
-    // 4. Firebase si en ligne
     if (navigator.onLine) await window.queueFlush();
     showToast('Tâche ajoutée');
   }
-
-  closeTaskModal();
-  renderTaskList();
-  if (taskViewMode === 'kanban') renderKanbanBoard();
-  renderDashboard();
 };
 
 // Génère un id unique côté client (22 chars, URL-safe)
@@ -818,12 +799,12 @@ window.deleteCurrentTask = async () => {
   const t = tasks.find(x => x.id === editingTaskId);
   if (t) await idbPut('tasks', { ...t, status: 'deleted', deletedAt: now, updatedAt: now });
   tasks = tasks.map(x => x.id === editingTaskId ? { ...x, status: 'deleted', deletedAt: now } : x);
-  await queuePush('delete', 'tasks', editingTaskId, {});
-  if (navigator.onLine) await window.queueFlush();
   closeTaskModal();
   renderTaskList();
   if (taskViewMode === 'kanban') renderKanbanBoard();
   renderDashboard();
+  await queuePush('delete', 'tasks', editingTaskId, {});
+  if (navigator.onLine) await window.queueFlush();
   showToast('Tâche déplacée dans la corbeille');
 };
 
