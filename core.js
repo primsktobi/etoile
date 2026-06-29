@@ -245,10 +245,11 @@ function runBoot() {
   onAuthStateChanged(auth, async user => {
     if (user) {
       currentUser = user;
-      await loadUserProfile();
-      await loadMyDaySelection();
+      await loadUserProfile();       // IDB uniquement — instantané
+      await loadMyDaySelection();    // IDB uniquement — instantané
       showApp();
       startListeners();
+      syncUserProfileFromFirebase(); // Firebase — non-bloquant, en arrière-plan
       checkNotifPermission();
       setupFCM();
       resetMotivationForNewSession();
@@ -448,29 +449,32 @@ async function purgeLocalDataOnLogout() {
 
 //  User Profile 
 async function loadUserProfile() {
-  // 1. Charger la photo locale (instantané, fonctionne hors-ligne)
+  // Partie 1 — IDB uniquement (instantané, fonctionne hors-ligne)
+  // Bloquante : showApp() attend que le profil local soit chargé avant d'afficher
   try {
     const cachedAvatar = await idbGet('prefs', 'avatarBase64');
     if (cachedAvatar?.value) userProfile.photoURL = cachedAvatar.value;
   } catch(e) {}
+}
 
-  // 2. Synchroniser avec Firestore (peut écraser si plus récent côté cloud)
+async function syncUserProfileFromFirebase() {
+  // Partie 2 — Firebase (peut être lent ou indisponible)
+  // Non-bloquante : lancée en arrière-plan après showApp()
   try {
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
     if (snap.exists()) {
       const data = snap.data();
       userProfile = { ...userProfile, ...data };
-      // Garder la base64 locale en priorité d'affichage si elle existe
       if (data.photoBase64) {
         userProfile.photoURL = data.photoBase64;
         await idbPut('prefs', { key: 'avatarBase64', value: data.photoBase64 });
-      } else if (userProfile.photoURL && !data.photoURL) {
-        // garde la version locale
       }
       settings = { ...settings, ...data.settings };
       await savePref('settings', settings);
+      // Mettre à jour l'UI avec les données Firebase quand elles arrivent
+      renderUserUI();
     }
-  } catch (e) { console.warn('Profile:', e); }
+  } catch (e) { console.warn('Profile Firebase:', e); }
 }
 
 function renderUserUI() {
@@ -586,11 +590,11 @@ window.goTo = (screen) => {
 function startListeners() {
   if (tasksUnsub) tasksUnsub();
 
-  // Affichage instantané depuis le cache local IndexedDB, avant même que
-  // Firestore ait eu le temps de répondre — évite l'écran vide au login.
+  // Affichage instantané depuis IDB — toujours, sans attendre Firebase
   idbGetAll('tasks').then(cached => {
-    if (tasks.length === 0 && cached.length > 0) {
-      tasks = cached.filter(t => t.uid === currentUser?.uid);
+    const myTasks = cached.filter(t => t.uid === currentUser?.uid);
+    if (myTasks.length > 0) {
+      tasks = myTasks;
       renderTaskList();
       if (taskViewMode === 'kanban') renderKanbanBoard();
       renderDashboard();
