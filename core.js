@@ -516,11 +516,14 @@ async function purgeLocalDataOnLogout() {
   const queueStore = await queueGetAll();
   for (const q of queueStore) await queueDelete(q.id);
 
-  // Prefs liées au compte — pas le thème ni accentColor
+  // Prefs liées au compte — purgées pour éviter qu'un autre utilisateur
+  // du même appareil hérite des paramètres du compte précédent.
+  // Firebase reconstruit ces prefs au prochain login (syncUserProfileFromFirebase).
   await idbDelete('prefs', 'avatarBase64');
   await idbDelete('prefs', 'settings');
+  await idbDelete('prefs', 'accentColor');
   await idbDelete('prefs', 'myDaySelection');
-  // musicTracks, theme et accentColor conservés volontairement
+  // musicTracks et theme conservés volontairement — liés à l'appareil, pas au compte
 }
 
 //  User Profile 
@@ -545,9 +548,22 @@ async function syncUserProfileFromFirebase() {
         userProfile.photoURL = data.photoBase64;
         await idbPut('prefs', { key: 'avatarBase64', value: data.photoBase64 });
       }
-      settings = { ...settings, ...data.settings };
+
+      // Remplacement complet — pas de fusion avec d'éventuelles valeurs
+      // résiduelles d'un compte précédent encore en mémoire JS.
+      settings = data.settings ? { ...data.settings } : { groupNotif: true, hidePseudo: false };
       await savePref('settings', settings);
-      // Mettre à jour l'UI avec les données Firebase quand elles arrivent
+
+      // accentColor vit dans settings — on le restaure aussi dans son
+      // propre slot prefs pour que loadPrefs() le retrouve aux prochains boots.
+      if (settings.accentColor) {
+        await savePref('accentColor', settings.accentColor);
+        document.documentElement.setAttribute('data-accent', settings.accentColor === 'blue' ? '' : settings.accentColor);
+        document.querySelectorAll('.accent-dot').forEach(d => d.classList.toggle('selected', d.dataset.accent === settings.accentColor));
+      }
+
+      // Applique immédiatement les toggles (fullscreen, musique, notifs…) à l'UI
+      updateSettingsToggles();
       renderUserUI();
     }
   } catch (e) { console.warn('Profile Firebase:', e); }
@@ -635,7 +651,10 @@ window.toggleFullscreenMode = async () => {
 async function saveSettings() {
   updateSettingsToggles();
   await savePref('settings', settings);
-  if (currentUser) await updateDoc(doc(db, 'users', currentUser.uid), { settings }).catch(() => {});
+  if (currentUser) {
+    await queuePushMerge('update', 'users', currentUser.uid, { settings });
+    if (navigator.onLine) await window.queueFlush();
+  }
 }
 
 // ── Navigation ─────────────────────────────────────────────

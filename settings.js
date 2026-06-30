@@ -224,7 +224,10 @@ window.setAccentColor = async (color) => {
   document.querySelectorAll('.accent-dot').forEach(d => d.classList.toggle('selected', d.dataset.accent === color));
   await savePref('accentColor', color);
   settings.accentColor = color;
-  if (currentUser) await updateDoc(doc(db,'users',currentUser.uid), { settings }).catch(()=>{});
+  if (currentUser) {
+    await queuePushMerge('update', 'users', currentUser.uid, { settings });
+    if (navigator.onLine) await window.queueFlush();
+  }
 };
 
 const HELP_CONTENT = [

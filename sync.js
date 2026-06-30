@@ -119,6 +119,21 @@ function _stripIdbFields(data) {
   return clean;
 }
 
+// ── queuePushMerge ────────────────────────────────────────────────────────────
+// Comme queuePush, mais lit d'abord l'entrée existante de la queue pour ce
+// document et fusionne les champs au lieu d'écraser. Garantit qu'aucune
+// modification n'est perdue quand plusieurs champs du même document
+// (ex: users/{uid} avec accentColor puis fullscreenStable) sont modifiés
+// séparément hors ligne avant le prochain flush.
+async function queuePushMerge(type, collectionName, docId, newFields) {
+  const key = `${collectionName}_${docId}`;
+  const existing = await queueGet(key);
+  const mergedData = { ...(existing?.data || {}), ...newFields };
+  await queuePush(type, collectionName, docId, mergedData);
+}
+
+window.queuePushMerge = queuePushMerge;
+
 // ── Auto-flush au retour de connexion ────────────────────────────────────────
 window.addEventListener('online', () => {
   if (currentUser) window.queueFlush();
