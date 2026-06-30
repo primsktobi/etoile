@@ -2070,7 +2070,7 @@
 
     <div class="settings-section">
       <div class="settings-section-title">Compte</div>
-      <div class="settings-item" onclick="doLogout()">
+      <div class="settings-item" onclick="openLogoutModal()">
         <div class="settings-item-icon" style="background:#ef444422;"><i class="fa-solid fa-right-from-bracket"></i></div>
         <div class="settings-item-text"><div class="settings-item-label" style="color:var(--red);">Déconnexion</div></div>
       </div>
@@ -2286,6 +2286,24 @@
       <button class="team-chat-addbtn" onclick="openTeamTaskModal()"><i class="fa-solid fa-plus"></i></button>
       <textarea class="team-chat-input" id="team-chat-input" placeholder="Écrire un message…" rows="1" oninput="handleTypingInput(); autoGrowChatInput(this);" onkeydown="if(event.key==='Enter' && !event.shiftKey && window.matchMedia('(pointer: fine)').matches){event.preventDefault();sendTeamMessage();}"></textarea>
       <button class="team-chat-sendbtn" onclick="sendTeamMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DÉCONNEXION -->
+<div class="modal-overlay" id="logout-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Déconnexion</div>
+    <div class="field-label">Mot de passe</div>
+    <input class="field-input" id="logout-password-input" type="password" placeholder="Mot de passe" autocomplete="current-password" />
+    <div id="logout-error-msg" style="display:none;color:var(--red);font-size:13px;margin-top:8px;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn-secondary" id="logout-cancel-btn" onclick="closeModal('logout-modal')">Annuler</button>
+      <button class="btn-danger" id="logout-confirm-btn" onclick="confirmLogout()">
+        <span id="logout-confirm-label">Déconnexion</span>
+        <i class="fa-solid fa-spinner fa-spin" id="logout-spinner" style="display:none;"></i>
+      </button>
     </div>
   </div>
 </div>

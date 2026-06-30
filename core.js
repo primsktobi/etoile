@@ -425,12 +425,80 @@ window.doForgotPassword = async () => {
   }
 };
 
-window.doLogout = async () => {
-  if (tasksUnsub) tasksUnsub();
-  if (teamsUnsub) teamsUnsub();
-  await purgeLocalDataOnLogout();
-  tasks = []; myTeams = [];
-  await signOut(auth);
+// ── Déconnexion sécurisée ────────────────────────────────────────────────────
+// 1. Ouvre le modal (jamais de déconnexion directe au clic)
+// 2. Vérifie la connexion — bloque immédiatement si hors ligne
+// 3. Réauthentifie avec le mot de passe Firebase
+// 4. Si correct : spinner → flush queue → purge IDB → signOut
+// 5. Si incorrect : message d'erreur, rien d'autre ne se passe
+
+window.openLogoutModal = () => {
+  document.getElementById('logout-password-input').value = '';
+  document.getElementById('logout-error-msg').style.display = 'none';
+  document.getElementById('logout-modal').classList.add('open');
+  setTimeout(() => document.getElementById('logout-password-input').focus(), 100);
+};
+
+function _showLogoutError(msg) {
+  const el = document.getElementById('logout-error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function _setLogoutLoading(loading) {
+  document.getElementById('logout-confirm-label').style.display = loading ? 'none' : 'inline';
+  document.getElementById('logout-spinner').style.display = loading ? 'inline' : 'none';
+  document.getElementById('logout-confirm-btn').disabled = loading;
+  document.getElementById('logout-cancel-btn').disabled = loading;
+  document.getElementById('logout-password-input').disabled = loading;
+}
+
+window.confirmLogout = async () => {
+  document.getElementById('logout-error-msg').style.display = 'none';
+
+  // Vérification connexion AVANT toute tentative de mot de passe —
+  // évite le piège "code erroné forcé avant que le vrai fonctionne"
+  if (!navigator.onLine) {
+    _showLogoutError('Vérifiez votre connexion internet');
+    return;
+  }
+
+  const password = document.getElementById('logout-password-input').value;
+  if (!password) {
+    _showLogoutError('Mot de passe requis');
+    return;
+  }
+
+  _setLogoutLoading(true);
+
+  try {
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
+
+    // Mot de passe correct — flush la queue vers Firebase avant purge
+    if (navigator.onLine) await window.queueFlush();
+
+    if (tasksUnsub) tasksUnsub();
+    if (teamsUnsub) teamsUnsub();
+    if (memosUnsub) memosUnsub();
+
+    await purgeLocalDataOnLogout();
+    tasks = []; myTeams = []; memos = [];
+
+    document.getElementById('logout-modal').classList.remove('open');
+    await signOut(auth);
+
+  } catch (err) {
+    _setLogoutLoading(false);
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      _showLogoutError('Mot de passe incorrect');
+    } else if (err.code === 'auth/network-request-failed') {
+      _showLogoutError('Vérifiez votre connexion internet');
+    } else {
+      _showLogoutError('Une erreur est survenue');
+      console.error('Logout error:', err);
+    }
+  }
 };
 
 async function purgeLocalDataOnLogout() {
