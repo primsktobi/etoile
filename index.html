@@ -1533,7 +1533,10 @@
   </div>
 
   <div class="auth-form" id="register-form" style="display:none">
-    <input type="text" id="reg-pseudo" placeholder="Pseudo" maxlength="30" />
+    <input type="text" id="reg-pseudo" placeholder="Pseudo" maxlength="30" onfocus="document.getElementById('hint-pseudo').style.display='block'" onblur="document.getElementById('hint-pseudo').style.display='none'" />
+    <div id="hint-pseudo" style="display:none;font-size:11px;color:var(--text3);margin-top:-6px;margin-bottom:6px;padding-left:2px;">Votre pseudo est votre nom visible par tous les autres utilisateurs.</div>
+    <input type="text" id="reg-username" placeholder="Nom d'utilisateur" maxlength="30" autocomplete="username" oninput="this.value=this.value.replace(/\s/g,'')" onfocus="document.getElementById('hint-username').style.display='block'" onblur="document.getElementById('hint-username').style.display='none'" />
+    <div id="hint-username" style="display:none;font-size:11px;color:var(--text3);margin-top:-6px;margin-bottom:6px;padding-left:2px;">Ce nom doit être unique.</div>
     <input type="email" id="reg-email" placeholder="Email" autocomplete="email" />
     <div class="auth-pw-wrap">
       <input type="password" id="reg-password" placeholder="Mot de passe (6+ caractères)" autocomplete="new-password" />
@@ -2342,6 +2345,14 @@
     <div class="settings-item" onclick="openEditPseudo()">
       <div class="settings-item-icon" style="background:#2563eb22;"><i class="fa-solid fa-user-pen"></i></div>
       <div class="settings-item-text"><div class="settings-item-label">Modifier le pseudo</div></div>
+      <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+    <div class="settings-item" onclick="openEditUsername()">
+      <div class="settings-item-icon" style="background:#0ea5e922;"><i class="fa-solid fa-at"></i></div>
+      <div class="settings-item-text">
+        <div class="settings-item-label">Nom d'utilisateur</div>
+        <div class="settings-item-sub" id="current-username-display">—</div>
+      </div>
       <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
     <div class="settings-item" onclick="openEditPassword()">

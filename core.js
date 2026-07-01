@@ -351,18 +351,29 @@ window.doLogin = async () => {
 };
 
 window.doRegister = async () => {
-  const pseudo = document.getElementById('reg-pseudo').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pwd = document.getElementById('reg-password').value;
-  const errEl = document.getElementById('register-error');
+  const pseudo    = document.getElementById('reg-pseudo').value.trim();
+  const username  = document.getElementById('reg-username').value.trim().toLowerCase();
+  const email     = document.getElementById('reg-email').value.trim();
+  const pwd       = document.getElementById('reg-password').value;
+  const errEl     = document.getElementById('register-error');
   errEl.textContent = '';
-  if (!pseudo || !email || !pwd) { errEl.textContent = 'Remplis tous les champs.'; return; }
+
+  if (!pseudo || !username || !email || !pwd) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (/\s/.test(username)) { errEl.textContent = 'Le nom d\'utilisateur ne doit pas contenir d\'espace.'; return; }
+  if (username.length < 3) { errEl.textContent = 'Nom d\'utilisateur : 3 caractères min.'; return; }
   if (pwd.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères min.'; return; }
+
+  // Vérification unicité du nom d'utilisateur avant création du compte
+  try {
+    const usernameCheck = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+    if (!usernameCheck.empty) { errEl.textContent = 'Ce nom d\'utilisateur est déjà utilisé.'; return; }
+  } catch (e) { errEl.textContent = 'Erreur de vérification. Réessaie.'; return; }
+
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pwd);
     await updateProfile(cred.user, { displayName: pseudo });
     await setDoc(doc(db, 'users', cred.user.uid), {
-      pseudo, email, photoURL: '', createdAt: serverTimestamp(),
+      pseudo, username, email, photoURL: '', createdAt: serverTimestamp(),
       settings: { groupNotif: true, hidePseudo: false }
     });
   } catch (e) { errEl.textContent = authError(e.code); }
@@ -587,6 +598,11 @@ function renderUserUI() {
       ? `<img src="${photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
       : initials;
   }
+
+  // Afficher le nom d'utilisateur actuel dans l'item Mon compte
+  const unEl = document.getElementById('current-username-display');
+  if (unEl) unEl.textContent = userProfile.username ? `@${userProfile.username}` : 'Non défini';
+
   renderGroupAvatarGrid();
   updateSettingsToggles();
 }

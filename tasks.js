@@ -177,8 +177,8 @@ function taskHTML(t) {
   if (isParty) return partyTaskHTML(t, isDone, isExpanded);
 
   return `
-  <div class="task-card-premium compact fade-in ${isDone?'is-done':''}" style="--task-color:${color};">
-    <div class="task-card-glow" style="background:${hexToRgba(color,0.18)};"></div>
+  <div class="task-card-premium compact fade-in ${isDone?'is-done':''}" style="--task-color:${color}; background: linear-gradient(135deg, ${hexToRgba(color,0.85)} 0%, ${hexToRgba(color,0.55)} 100%); border-color: ${hexToRgba(color,0.3)};">
+    <div class="task-card-glow" style="display:none;"></div>
     <div class="task-card-row">
       <div class="task-check-premium ${isDone?'done':''}" style="--task-color:${color};">${isDone?'<i class="fa-solid fa-check"></i>':''}</div>
       <div class="task-body">

@@ -73,7 +73,7 @@ function renderHistory() {
 function deletedTaskHTML(t) {
   const color = t.color || '#2563eb';
   return `
-  <div class="task-item fade-in" style="background:${hexToRgba(color,0.06)};border-color:${hexToRgba(color,0.2)};opacity:0.85;">
+  <div class="task-item fade-in" style="background: linear-gradient(135deg, ${hexToRgba(color,0.85)} 0%, ${hexToRgba(color,0.55)} 100%); border-color:${hexToRgba(color,0.3)};opacity:0.85;">
     <div class="task-color-bar" style="background:${color}"></div>
     <div style="padding-left:8px;display:flex;gap:12px;align-items:center;width:100%;">
       <div class="task-body">

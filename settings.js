@@ -217,7 +217,31 @@ window.openEditPassword = async () => {
     .catch(()=>showToast('❌ Erreur lors du changement'));
 };
 
-window.openThanksModal = () => document.getElementById('thanks-modal').classList.add('open');
+window.openEditUsername = async () => {
+  const current = userProfile.username || '';
+  const val = prompt(`Nom d'utilisateur actuel : ${current || '—'}\n\nNouveau nom d'utilisateur :`, current);
+  if (val === null) return;
+  const newUsername = val.trim().toLowerCase();
+  if (!newUsername) { showToast('Nom d\'utilisateur vide'); return; }
+  if (/\s/.test(newUsername)) { showToast('Pas d\'espace autorisé'); return; }
+  if (newUsername.length < 3) { showToast('3 caractères minimum'); return; }
+  if (newUsername === current) return;
+
+  try {
+    // Vérification unicité
+    const check = await getDocs(query(collection(db, 'users'), where('username', '==', newUsername)));
+    if (!check.empty) { showToast('Ce nom d\'utilisateur est déjà utilisé'); return; }
+
+    await updateDoc(doc(db, 'users', currentUser.uid), { username: newUsername });
+    userProfile.username = newUsername;
+    const el = document.getElementById('current-username-display');
+    if (el) el.textContent = `@${newUsername}`;
+    showToast('Nom d\'utilisateur mis à jour');
+  } catch (e) {
+    showToast('Une erreur est survenue');
+    console.error(e);
+  }
+};
 
 window.openAppearanceModal = () => {
   document.getElementById('appearance-modal').classList.add('open');
