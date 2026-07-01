@@ -2,7 +2,7 @@
 <html lang="fr" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="TRIVO" />
@@ -879,8 +879,8 @@
 
     /* ─── TEAM CHAT (WhatsApp style) ─── */
     .team-chat-modal {
-      position: fixed; inset: 0; width: 100%; height: 100%; max-width: 100%;
-      max-height: 100%; border-radius: 0; display: flex; flex-direction: column;
+      position: fixed; inset: 0; width: 100%; height: 100dvh; max-width: 100%;
+      max-height: 100dvh; border-radius: 0; display: flex; flex-direction: column;
       padding: 0; transform: none; background: var(--bg);
     }
     .team-chat-header {
@@ -888,6 +888,7 @@
       padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px;
       background: var(--nav-bg); backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border); flex-shrink: 0;
+      position: sticky; top: 0; z-index: 10;
     }
     .team-chat-avatar {
       width: 38px; height: 38px; border-radius: 50%; background: var(--blue);
@@ -1758,8 +1759,8 @@
     </div>
 
     <!-- Vue édition (zone de texte libre, pas de champs structurés) -->
-    <div id="memo-editor-view" style="display:none;">
-      <div class="section-title-row">
+    <div id="memo-editor-view" style="display:none;display:flex;flex-direction:column;min-height:100%;">
+      <div class="section-title-row" id="memo-editor-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-top:4px;padding-bottom:4px;">
         <button class="advanced-filter-btn" onclick="closeMemoEditor()" title="Retour"><i class="fa-solid fa-arrow-left"></i></button>
         <div style="display:flex;gap:8px;">
           <button class="advanced-filter-btn" id="memo-mic-btn" onclick="toggleMemoRecording()" title="Enregistrement vocal"><i class="fa-solid fa-microphone"></i></button>
