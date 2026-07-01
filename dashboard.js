@@ -5,17 +5,11 @@ function renderDashboard() {
   weekStart.setHours(0,0,0,0);
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
 
-  const remaining = tasks.filter(t => t.status === 'pending' && !isPastDue(t)).length;
   const done = tasks.filter(t => t.status === 'done').length;
-  const missed = tasks.filter(t => t.status === 'missed' || (t.status === 'pending' && isPastDue(t))).length;
 
   const hoursOf = arr => arr.reduce((s, t) => s + (parseFloat(t.hours) || 0), 0);
-  setText('stat-remaining', remaining);
   setText('stat-done', done);
-  setText('stat-missed', missed);
-  setText('stat-remaining-h', `${hoursOf(tasks.filter(t => t.status==='pending' && !isPastDue(t)))}h estimées`);
   setText('stat-done-h', `${hoursOf(tasks.filter(t => t.status==='done'))}h complétées`);
-  setText('stat-missed-h', `${hoursOf(tasks.filter(t => t.status==='missed'||(t.status==='pending'&&isPastDue(t))))}h perdues`);
 
   const weekTasks = tasks.filter(t => { if (!t.date) return false; const d=new Date(t.date); return d>=weekStart && d<weekEnd; });
   const weekDone = weekTasks.filter(t => t.status==='done').length;

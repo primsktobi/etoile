@@ -17,6 +17,9 @@ import {
 import {
   getMessaging, getToken, onMessage
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js';
+import {
+  getFunctions, httpsCallable
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 
 // ── Firebase Init ──────────────────────────────────────────
 const firebaseConfig = {
@@ -38,6 +41,7 @@ const db = initializeFirestore(firebaseApp, {
 });
 const storage = getStorage(firebaseApp);
 const messaging = getMessaging(firebaseApp);
+const functions = getFunctions(firebaseApp, 'europe-west1');
 const VAPID_KEY = 'BMPl4NP3onbq68rzLJMDUdIo3a_484Nvh8BAWV5B3SZwty_oAiO7C_MtVjHDK1RyLxJ-jji9mylkV27vSbd9tag';
 
 // ── Exposition globale pour les scripts classiques ──────────
@@ -82,6 +86,10 @@ window.getDownloadURL = getDownloadURL;
 // Messaging
 window.getToken = getToken;
 window.onMessage = onMessage;
+
+// Functions
+window.functions = functions;
+window.httpsCallable = httpsCallable;
 
 
 window.dispatchEvent(new Event('firebase-bridge-ready'));

@@ -1682,22 +1682,6 @@
       <div id="habits-list"></div>
     </div>
 
-    <!-- STATS COMPACTES PREMIUM -->
-    <div class="dash-stats-row">
-      <div class="dash-stat-pill blue">
-        <span class="dash-stat-num" id="stat-remaining">0</span>
-        <span class="dash-stat-lbl">Restantes</span>
-      </div>
-      <div class="dash-stat-pill green">
-        <span class="dash-stat-num" id="stat-done">0</span>
-        <span class="dash-stat-lbl">Réussies</span>
-      </div>
-      <div class="dash-stat-pill red">
-        <span class="dash-stat-num" id="stat-missed">0</span>
-        <span class="dash-stat-lbl">Manquées</span>
-      </div>
-    </div>
-
     <!-- PROGRESSION HEBDO PREMIUM -->
     <div class="dash-week-card">
       <div class="dash-week-header">
@@ -1816,7 +1800,6 @@
       <button class="history-tab active" onclick="filterHistory('done', this)"><i class="fa-solid fa-circle-check"></i> Terminées</button>
       <button class="history-tab" onclick="filterHistory('deleted', this)"><i class="fa-solid fa-trash"></i> Supprimées</button>
       <button class="history-tab" onclick="filterHistory('missed', this)"><i class="fa-solid fa-clock-rotate-left"></i> Non faites</button>
-      <button class="history-tab" onclick="filterHistory('skipped', this)"><i class="fa-solid fa-forward-step"></i> Sautées</button>
     </div>
     <div id="history-list"></div>
   </div>
@@ -1920,67 +1903,20 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-section-title">Avatar pour les groupes</div>
-      <div class="card" style="padding:14px;">
-        <div class="field-label" style="margin-bottom:10px;">Visible uniquement par les membres de tes équipes</div>
-        <div class="group-avatar-grid" id="group-avatar-grid"></div>
-      </div>
-    </div>
-
-    <div class="settings-section">
       <div class="settings-section-title">Apparence</div>
-      <div class="card" style="padding:14px;margin-bottom:10px;">
-        <div class="field-label" style="margin-bottom:10px;">Thème</div>
-        <div class="theme-switch">
-          <button class="theme-opt active" id="theme-dark-btn" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Sombre</button>
-          <button class="theme-opt" id="theme-light-btn" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i> Clair</button>
-        </div>
-      </div>
-      <div class="card" style="padding:14px;">
-        <div class="field-label" style="margin-bottom:10px;">Couleur d'accent</div>
-        <div style="display:flex;gap:14px;" id="accent-color-picker">
-          <div class="accent-dot selected" data-accent="blue" onclick="setAccentColor('blue')"><div class="accent-dot-inner" style="background:#2563eb;"></div></div>
-          <div class="accent-dot" data-accent="green" onclick="setAccentColor('green')"><div class="accent-dot-inner" style="background:#16a34a;"></div></div>
-          <div class="accent-dot" data-accent="orange" onclick="setAccentColor('orange')"><div class="accent-dot-inner" style="background:#ea580c;"></div></div>
-          <div class="accent-dot" data-accent="purple" onclick="setAccentColor('purple')"><div class="accent-dot-inner" style="background:#7c3aed;"></div></div>
-        </div>
+      <div class="settings-item" onclick="openAppearanceModal()">
+        <div class="settings-item-icon" style="background:#2563eb22;"><i class="fa-solid fa-palette"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label">Thème, couleur et avatar de groupe</div></div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="settings-section-title">Mon compte</div>
-      <div class="settings-item" onclick="openEditPseudo()">
-        <div class="settings-item-icon" style="background:#2563eb22;"><i class="fa-solid fa-user-pen"></i></div>
-        <div class="settings-item-text">
-          <div class="settings-item-label">Modifier le pseudo</div>
-        </div>
+      <div class="settings-item" onclick="openAccountModal()">
+        <div class="settings-item-icon" style="background:#f9731622;"><i class="fa-solid fa-user-gear"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label">Pseudo, mot de passe et compte</div></div>
         <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
-      </div>
-      <div class="settings-item" onclick="openEditPassword()">
-        <div class="settings-item-icon" style="background:#f9731622;"><i class="fa-solid fa-key"></i></div>
-        <div class="settings-item-text">
-          <div class="settings-item-label">Changer le mot de passe</div>
-        </div>
-        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">Notifications</div>
-      <div class="settings-item">
-        <div class="settings-item-icon" style="background:#22c55e22;"><i class="fa-solid fa-bell"></i></div>
-        <div class="settings-item-text">
-          <div class="settings-item-label">Notifications activées</div>
-          <div class="settings-item-sub" id="notif-status-text">Vérification…</div>
-        </div>
-        <div class="toggle on" id="notif-toggle" onclick="toggleNotifications()"></div>
-      </div>
-      <div class="settings-item">
-        <div class="settings-item-icon" style="background:#8b5cf622;"><i class="fa-solid fa-users"></i></div>
-        <div class="settings-item-text">
-          <div class="settings-item-label">Notifs des groupes</div>
-        </div>
-        <div class="toggle on" id="group-notif-toggle" onclick="toggleGroupNotif()"></div>
       </div>
     </div>
 
@@ -2039,13 +1975,10 @@
 
     <div class="settings-section">
       <div class="settings-section-title">Confidentialité</div>
-      <div class="settings-item">
-        <div class="settings-item-icon" style="background:#6366f122;"><i class="fa-solid fa-eye-slash"></i></div>
-        <div class="settings-item-text">
-          <div class="settings-item-label">Masquer mon pseudo</div>
-          <div class="settings-item-sub">Les autres membres ne voient pas votre pseudo</div>
-        </div>
-        <div class="toggle" id="hide-pseudo-toggle" onclick="toggleHidePseudo()"></div>
+      <div class="settings-item" onclick="openPrivacyModal()">
+        <div class="settings-item-icon" style="background:#6366f122;"><i class="fa-solid fa-lock"></i></div>
+        <div class="settings-item-text"><div class="settings-item-label">Notifications, amis et visibilité</div></div>
+        <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
       </div>
     </div>
 
@@ -2359,6 +2292,150 @@
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeTeamTaskModal()">Annuler</button>
       <button class="btn-primary" style="flex:2" onclick="saveTeamTask()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AIDE -->
+<!-- MODAL APPARENCE -->
+<div class="modal-overlay" id="appearance-modal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-palette"></i> Apparence</div>
+
+    <div class="card" style="padding:14px;margin-bottom:10px;">
+      <div class="field-label" style="margin-bottom:10px;">Thème</div>
+      <div class="theme-switch">
+        <button class="theme-opt active" id="theme-dark-btn" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Sombre</button>
+        <button class="theme-opt" id="theme-light-btn" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i> Clair</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:14px;margin-bottom:10px;">
+      <div class="field-label" style="margin-bottom:10px;">Couleur d'accent</div>
+      <div style="display:flex;gap:14px;" id="accent-color-picker">
+        <div class="accent-dot selected" data-accent="blue" onclick="setAccentColor('blue')"><div class="accent-dot-inner" style="background:#2563eb;"></div></div>
+        <div class="accent-dot" data-accent="green" onclick="setAccentColor('green')"><div class="accent-dot-inner" style="background:#16a34a;"></div></div>
+        <div class="accent-dot" data-accent="orange" onclick="setAccentColor('orange')"><div class="accent-dot-inner" style="background:#ea580c;"></div></div>
+        <div class="accent-dot" data-accent="purple" onclick="setAccentColor('purple')"><div class="accent-dot-inner" style="background:#7c3aed;"></div></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:14px;">
+      <div class="field-label" style="margin-bottom:10px;">Avatar pour les groupes</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Visible uniquement pour les groupes</div>
+      <div class="group-avatar-grid" id="group-avatar-grid"></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-primary" style="flex:1;padding:14px;" onclick="closeModal('appearance-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MON COMPTE -->
+<div class="modal-overlay" id="account-modal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-user-gear"></i> Mon compte</div>
+
+    <div class="settings-item" onclick="openEditPseudo()">
+      <div class="settings-item-icon" style="background:#2563eb22;"><i class="fa-solid fa-user-pen"></i></div>
+      <div class="settings-item-text"><div class="settings-item-label">Modifier le pseudo</div></div>
+      <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+    <div class="settings-item" onclick="openEditPassword()">
+      <div class="settings-item-icon" style="background:#f9731622;"><i class="fa-solid fa-key"></i></div>
+      <div class="settings-item-text"><div class="settings-item-label">Changer le mot de passe</div></div>
+      <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+    <div class="settings-item" onclick="openDeleteAccountModal()">
+      <div class="settings-item-icon" style="background:#ef444422;"><i class="fa-solid fa-user-xmark"></i></div>
+      <div class="settings-item-text"><div class="settings-item-label" style="color:var(--red);">Supprimer mon compte</div></div>
+      <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-primary" style="flex:1;padding:14px;" onclick="closeModal('account-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUPPRESSION DE COMPTE -->
+<div class="modal-overlay" id="delete-account-modal">
+  <div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--red);"><i class="fa-solid fa-triangle-exclamation"></i> Supprimer mon compte</div>
+
+    <div class="card" style="padding:14px;margin-bottom:12px;border:1px solid var(--red);">
+      <div class="field-label" style="color:var(--red);margin-bottom:8px;">Ce que vous perdrez définitivement</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+        — Toutes vos tâches et mémos<br>
+        — Votre accès à tous vos groupes<br>
+        — Les groupes dont vous êtes le seul membre<br>
+        — Votre compte Trivo (email et mot de passe)<br><br>
+        <span style="color:var(--text3);">Ce qui est conservé : vos messages déjà envoyés dans les groupes, et les groupes partagés (le membre le plus ancien devient administrateur).</span>
+      </div>
+    </div>
+
+    <div class="field-label">Email</div>
+    <input class="field-input" id="delete-account-email" type="email" placeholder="Votre adresse email" autocomplete="email" style="margin-bottom:10px;" />
+
+    <div class="field-label">Mot de passe</div>
+    <input class="field-input" id="delete-account-password" type="password" placeholder="Votre mot de passe" autocomplete="current-password" />
+
+    <div id="delete-account-error" style="display:none;color:var(--red);font-size:13px;margin-top:8px;"></div>
+
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn-secondary" id="delete-account-cancel-btn" onclick="closeModal('delete-account-modal')">Annuler</button>
+      <button class="btn-danger" id="delete-account-confirm-btn" onclick="confirmDeleteAccount()">
+        <span id="delete-account-label">Supprimer définitivement</span>
+        <i class="fa-solid fa-spinner fa-spin" id="delete-account-spinner" style="display:none;"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIDENTIALITÉ -->
+<div class="modal-overlay" id="privacy-modal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-lock"></i> Confidentialité</div>
+
+    <div class="settings-item">
+      <div class="settings-item-icon" style="background:#22c55e22;"><i class="fa-solid fa-bell"></i></div>
+      <div class="settings-item-text">
+        <div class="settings-item-label">Notifications activées</div>
+        <div class="settings-item-sub" id="notif-status-text">Vérification…</div>
+      </div>
+      <div class="toggle on" id="notif-toggle" onclick="toggleNotifications()"></div>
+    </div>
+    <div class="settings-item">
+      <div class="settings-item-icon" style="background:#8b5cf622;"><i class="fa-solid fa-users"></i></div>
+      <div class="settings-item-text"><div class="settings-item-label">Notifs des groupes</div></div>
+      <div class="toggle on" id="group-notif-toggle" onclick="toggleGroupNotif()"></div>
+    </div>
+    <div class="settings-item">
+      <div class="settings-item-icon" style="background:#0ea5e922;"><i class="fa-solid fa-user-group"></i></div>
+      <div class="settings-item-text"><div class="settings-item-label">Mes amis</div></div>
+      <div class="settings-item-right" id="friends-count-text" style="color:var(--text3);font-size:13px;">0</div>
+    </div>
+    <div class="settings-item">
+      <div class="settings-item-icon" style="background:#a855f722;"><i class="fa-solid fa-people-group"></i></div>
+      <div class="settings-item-text"><div class="settings-item-label">Présence en groupe</div></div>
+      <div class="settings-item-right" id="teams-count-text" style="color:var(--text3);font-size:13px;">0</div>
+    </div>
+    <div class="settings-item">
+      <div class="settings-item-icon" style="background:#6366f122;"><i class="fa-solid fa-eye-slash"></i></div>
+      <div class="settings-item-text">
+        <div class="settings-item-label">Masquer mon pseudo</div>
+        <div class="settings-item-sub">Les autres membres ne voient pas votre pseudo</div>
+      </div>
+      <div class="toggle" id="hide-pseudo-toggle" onclick="toggleHidePseudo()"></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-primary" style="flex:1;padding:14px;" onclick="closeModal('privacy-modal')">Fermer</button>
     </div>
   </div>
 </div>

@@ -56,7 +56,7 @@ window.toggleTaskView = () => {
 function renderKanbanBoard() {
   const el = document.getElementById('kanban-board');
   if (!el) return;
-  let visible = tasks.filter(t => t.status !== 'deleted' && t.status !== 'missed' && t.status !== 'skipped');
+  let visible = tasks.filter(t => t.status !== 'deleted' && t.status !== 'missed');
   if (advancedFilters.list) visible = visible.filter(t => t.list === advancedFilters.list);
   if (advancedFilters.minPriority > 0) visible = visible.filter(t => (t.priority||0) >= advancedFilters.minPriority);
 

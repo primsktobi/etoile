@@ -94,7 +94,7 @@ window.confirmTeamAction = async () => {
     const ref2 = await addDoc(collection(db,'teams'), {
       name, ownerId: currentUser.uid,
       memberIds: [currentUser.uid],
-      members: [{ uid: currentUser.uid, pseudo: userProfile.pseudo||currentUser.displayName||'?', photoURL: userProfile.photoURL||'', groupAvatar: userProfile.groupAvatar||'ga1' }],
+      members: [{ uid: currentUser.uid, pseudo: userProfile.pseudo||currentUser.displayName||'?', photoURL: userProfile.photoURL||'', groupAvatar: userProfile.groupAvatar||'ga1', joinedAt: Date.now() }],
       pending: [], allowIdCopy: true, createdAt: serverTimestamp()
     });
     showToast('🎉 Équipe créée !');
@@ -407,7 +407,7 @@ window.acceptMember = async (teamId, uid, pseudo, photoURL, groupAvatar) => {
   const team = snap.data();
   await updateDoc(ref2, {
     pending: team.pending.filter(p=>p.uid!==uid),
-    members: [...(team.members||[]), {uid,pseudo,photoURL,groupAvatar:groupAvatar||'ga1'}],
+    members: [...(team.members||[]), {uid,pseudo,photoURL,groupAvatar:groupAvatar||'ga1',joinedAt:Date.now()}],
     memberIds: [...(team.memberIds||[]), uid]
   });
   showToast(` ${pseudo} accepté !`);
