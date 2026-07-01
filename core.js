@@ -363,20 +363,35 @@ window.doRegister = async () => {
   if (username.length < 3) { errEl.textContent = 'Nom d\'utilisateur : 3 caractères min.'; return; }
   if (pwd.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères min.'; return; }
 
-  // Vérification unicité du nom d'utilisateur avant création du compte
+  let cred = null;
   try {
-    const usernameCheck = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
-    if (!usernameCheck.empty) { errEl.textContent = 'Ce nom d\'utilisateur est déjà utilisé.'; return; }
-  } catch (e) { errEl.textContent = 'Erreur de vérification. Réessaie.'; return; }
+    // 1. Créer le compte Firebase Auth d'abord — l'utilisateur est maintenant
+    //    authentifié, ce qui permet la requête Firestore qui suit.
+    cred = await createUserWithEmailAndPassword(auth, email, pwd);
 
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pwd);
+    // 2. Vérifier l'unicité du username maintenant qu'on est authentifié
+    const usernameCheck = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+    if (!usernameCheck.empty) {
+      // Username pris — supprimer le compte Auth qu'on vient de créer et annuler
+      await cred.user.delete();
+      errEl.textContent = 'Ce nom d\'utilisateur est déjà utilisé.';
+      return;
+    }
+
+    // 3. Username libre — finaliser la création
     await updateProfile(cred.user, { displayName: pseudo });
     await setDoc(doc(db, 'users', cred.user.uid), {
       pseudo, username, email, photoURL: '', createdAt: serverTimestamp(),
       settings: { groupNotif: true, hidePseudo: false }
     });
-  } catch (e) { errEl.textContent = authError(e.code); }
+
+  } catch (e) {
+    // Si le compte Auth a été créé mais que la suite a échoué, on nettoie
+    if (cred?.user && e.code !== 'auth/email-already-in-use') {
+      await cred.user.delete().catch(() => {});
+    }
+    errEl.textContent = authError(e.code);
+  }
 };
 
 function authError(code) {

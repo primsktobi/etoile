@@ -248,7 +248,11 @@ window.openAppearanceModal = () => {
   renderGroupAvatarGrid();
 };
 
-window.openAccountModal = () => document.getElementById('account-modal').classList.add('open');
+window.openAccountModal = () => {
+  const el = document.getElementById('current-username-display');
+  if (el) el.textContent = userProfile.username ? `@${userProfile.username}` : 'Non défini';
+  document.getElementById('account-modal').classList.add('open');
+};
 
 window.openPrivacyModal = () => {
   document.getElementById('privacy-modal').classList.add('open');

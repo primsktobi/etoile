@@ -1811,8 +1811,9 @@
   <div class="screen" id="screen-teams">
     <div class="section-title">Équipes</div>
     <div style="display:flex; gap:10px; margin-bottom:16px;">
-      <button class="btn-primary" style="flex:1;padding:12px;border-radius:12px;font-size:14px;" onclick="openCreateTeam()"><i class="fa-solid fa-plus"></i> Créer une équipe</button>
-      <button class="btn-secondary" style="flex:1;padding:12px;border-radius:12px;font-size:14px;" onclick="openJoinTeam()"><i class="fa-solid fa-link"></i> Rejoindre</button>
+      <button class="btn-primary" style="flex:1;padding:12px;border-radius:12px;font-size:13px;" onclick="openDM()"><i class="fa-solid fa-message"></i> DM</button>
+      <button class="btn-primary" style="flex:1;padding:12px;border-radius:12px;font-size:13px;" onclick="openCreateTeam()"><i class="fa-solid fa-plus"></i> Créer</button>
+      <button class="btn-secondary" style="flex:1;padding:12px;border-radius:12px;font-size:13px;" onclick="openJoinTeam()"><i class="fa-solid fa-link"></i> Rejoindre</button>
     </div>
     <div id="teams-list"></div>
   </div>
@@ -2190,11 +2191,15 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="team-modal-title">Créer une équipe</div>
-    <div class="field-label">Nom de l'équipe</div>
+    <div class="field-label" id="team-name-label">Nom de l'équipe</div>
     <input class="field-input" id="team-name-input" placeholder="Ex: Groupe de révision" maxlength="40" />
     <div id="join-id-wrap" style="display:none">
       <div class="field-label">ID de l'équipe</div>
       <input class="field-input" id="team-join-id-input" placeholder="Colle l'ID partagé ici" />
+    </div>
+    <!-- Résultats de recherche DM -->
+    <div id="dm-results-wrap" style="display:none;margin-top:10px;">
+      <div id="dm-results-list" style="max-height:220px;overflow-y:auto;"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeTeamModal()">Annuler</button>
