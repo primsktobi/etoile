@@ -1,5 +1,26 @@
 let teamLastSeen = {}; 
 let teamLastMessageTime = {}; 
+let dmProfileCache = {}; // cache des profils pour les DMs {uid: {pseudo, photoURL}}
+
+// Précharge les profils des autres utilisateurs dans les DMs
+async function prefetchDMProfiles() {
+  const dmTeams = myTeams.filter(t => t.type === 'dm');
+  for (const team of dmTeams) {
+    const other = team.members?.find(m => m.uid !== currentUser.uid);
+    if (!other?.uid || dmProfileCache[other.uid]) continue;
+    try {
+      const snap = await getDoc(doc(db, 'users', other.uid));
+      if (snap.exists()) {
+        const d = snap.data();
+        dmProfileCache[other.uid] = {
+          pseudo: d.pseudo || d.username || '?',
+          photoURL: d.photoBase64 || d.photoURL || ''
+        };
+      }
+    } catch(e) {}
+  }
+  renderTeams();
+}
 
 function renderTeams() {
   const el = document.getElementById('teams-list');
@@ -16,11 +37,12 @@ function renderTeams() {
     const lastSeen = teamLastSeen[team.id] || 0;
     const hasUnread = lastMsg > lastSeen;
 
-    // DM — afficher le pseudo et la photo de l'autre personne
+    // DM — afficher le pseudo et la photo à jour depuis le cache
     if (team.type === 'dm') {
       const other = team.members?.find(m => m.uid !== currentUser.uid);
-      const otherName = other?.pseudo || '?';
-      const otherPhoto = other?.photoURL || '';
+      const cached = other?.uid ? dmProfileCache[other.uid] : null;
+      const otherName = cached?.pseudo || other?.pseudo || '?';
+      const otherPhoto = cached?.photoURL || other?.photoURL || '';
       const initials = otherName.slice(0, 2).toUpperCase();
       const avatarHtml = otherPhoto
         ? `<img src="${otherPhoto}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">`
@@ -247,10 +269,19 @@ window.openTeamDetail = async (teamId) => {
   const team = { id: snap.id, ...snap.data() };
 
   if (team.type === 'dm') {
-    // DM — afficher le pseudo et la photo de l'autre personne
+    // DM — lire le profil actuel de l'autre depuis users/{uid} pour avoir
+    // le pseudo et la photo à jour (pas figés au moment de la création du DM)
     const other = team.members?.find(m => m.uid !== currentUser.uid);
-    const otherName = other?.pseudo || '?';
-    const otherPhoto = other?.photoURL || '';
+    let otherName = other?.pseudo || '?';
+    let otherPhoto = other?.photoURL || '';
+    try {
+      const otherSnap = await getDoc(doc(db, 'users', other.uid));
+      if (otherSnap.exists()) {
+        const otherData = otherSnap.data();
+        otherName = otherData.pseudo || otherData.username || otherName;
+        otherPhoto = otherData.photoBase64 || otherData.photoURL || otherPhoto;
+      }
+    } catch(e) {}
     const initials = otherName.slice(0, 2).toUpperCase();
     document.getElementById('team-detail-name').textContent = otherName;
     const chatAvatar = document.getElementById('team-chat-avatar');
@@ -339,7 +370,29 @@ function groupAvatarHTML(avatarId, pseudo, size = 36) {
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${a.grad};display:flex;align-items:center;justify-content:center;color:#fff;font-size:${size*0.42}px;flex-shrink:0;"><i class="fa-solid ${a.icon}"></i></div>`;
 }
 
-window.openTeamInfoModal = () => document.getElementById('team-info-modal').classList.add('open');
+window.openTeamInfoModal = async () => {
+  const snap = await getDoc(doc(db, 'teams', currentTeamId));
+  if (!snap.exists()) return;
+  const team = { id: snap.id, ...snap.data() };
+  const isDM = team.type === 'dm';
+
+  document.getElementById('team-group-info').style.display = isDM ? 'none' : 'block';
+
+  if (isDM) {
+    const other = team.members?.find(m => m.uid !== currentUser.uid);
+    const otherName = other?.pseudo || '?';
+    document.getElementById('team-info-title').textContent = otherName;
+    document.getElementById('team-leave-btn').textContent = `Bloquer ${otherName}`;
+    document.getElementById('team-leave-btn').onclick = () => blockDMUser(other?.uid, otherName);
+  } else {
+    document.getElementById('team-info-title').textContent = 'Informations';
+    document.getElementById('team-leave-btn').textContent = 'Quitter l\'équipe';
+    document.getElementById('team-leave-btn').onclick = leaveTeam;
+    renderTeamMembersInfo(team);
+  }
+
+  document.getElementById('team-info-modal').classList.add('open');
+};
 
 // ── Chat listener : messages + tâches mélangés, triés par date ──
 function startTeamChatListener(teamId) {
@@ -412,16 +465,15 @@ window.autoGrowChatInput = (el) => {
 function renderTeamChat(items) {
   const feed = document.getElementById('team-chat-feed');
   if (!feed) return;
-
-  // On ne force le scroll automatique que si l'utilisateur était déjà proche du bas
-  // (évite que le feed "saute" pendant qu'on lit plus haut ou qu'on tape un message)
   const wasNearBottom = (feed.scrollHeight - feed.scrollTop - feed.clientHeight) < 80;
+  const currentTeam = myTeams.find(t => t.id === currentTeamId);
+  const isDM = currentTeam?.type === 'dm';
 
   if (items.length === 0) {
     feed.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-comments"></i></div><div class="empty-title">Aucun message ni tâche</div><div class="empty-sub">Écris un message ou ajoute une tâche avec +</div></div><div id="typing-indicator-slot"></div>`;
     return;
   }
-  feed.innerHTML = items.map(it => it.kind === 'task' ? teamTaskChatHTML(it) : teamMessageHTML(it)).join('') + '<div id="typing-indicator-slot"></div>';
+  feed.innerHTML = items.map(it => it.kind === 'task' ? teamTaskChatHTML(it) : teamMessageHTML(it, isDM)).join('') + '<div id="typing-indicator-slot"></div>';
   if (wasNearBottom) {
     requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
   }
@@ -439,11 +491,24 @@ function renderTypingIndicator(typingUsers) {
   if (wasNearBottom && feed) feed.scrollTop = feed.scrollHeight;
 }
 
-function teamMessageHTML(m) {
+function teamMessageHTML(m, isDM) {
   const mine = m.uid === currentUser.uid;
+
+  // Filtrage blocage — si l'auteur est bloqué ET le message a été envoyé
+  // pendant la période de blocage, on ne l'affiche jamais
+  if (!mine && isDM) {
+    const blocked = userProfile.blocked || [];
+    const block = blocked.find(b => b.uid === m.uid);
+    if (block) {
+      const msgTs = m.timestamp?.toMillis?.() || 0;
+      const unblockedAt = block.unblockedAt || Infinity;
+      if (msgTs >= block.blockedAt && msgTs < unblockedAt) return '';
+    }
+  }
+
   return `
   <div class="chat-msg ${mine?'mine':''}">
-    ${!mine ? `<div class="chat-msg-author">${escHtml(m.pseudo||'?')}</div>` : ''}
+    ${!mine && !isDM ? `<div class="chat-msg-author">${escHtml(m.pseudo||'?')}</div>` : ''}
     <div>${escHtml(m.text)}</div>
     <div class="chat-msg-time">${fmtTime(m.timestamp)}</div>
   </div>`;
@@ -521,16 +586,28 @@ window.sendTeamMessage = async () => {
   const text = input.value.trim();
   if (!text || !currentTeamId) return;
   input.value = '';
-  autoGrowChatInput(input); // remet le champ à sa hauteur d'une ligne
+  autoGrowChatInput(input);
   clearTimeout(typingDebounce);
   deleteDoc(doc(db,'typingStatus',`${currentTeamId}_${currentUser.uid}`)).catch(()=>{});
+
+  // Limite DM : 50 messages max — supprime le plus ancien avant d'envoyer
+  const currentTeam = myTeams.find(t => t.id === currentTeamId);
+  if (currentTeam?.type === 'dm') {
+    const dmMsgs = teamChatCache.filter(m => m.kind === 'message');
+    if (dmMsgs.length >= 50) {
+      const oldest = dmMsgs.reduce((a, b) =>
+        (a.timestamp?.toMillis?.() || 0) < (b.timestamp?.toMillis?.() || 0) ? a : b
+      );
+      await deleteDoc(doc(db, 'teamMessages', oldest.id)).catch(() => {});
+    }
+  }
+
   await addDoc(collection(db,'teamMessages'), {
     teamId: currentTeamId, text,
     uid: currentUser.uid,
     pseudo: settings.hidePseudo ? 'Anonyme' : (userProfile.pseudo||currentUser.displayName||'?'),
     timestamp: serverTimestamp()
   });
-  // On force le scroll en bas puisque c'est notre propre message qu'on vient d'envoyer
   const feed = document.getElementById('team-chat-feed');
   if (feed) requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
 };
@@ -565,6 +642,23 @@ window.rejectMember = async (teamId, uid) => {
   renderTeamMembersInfo({ id: teamId, ...newSnap.data() });
 };
 
+window.blockDMUser = async (otherUid, otherName) => {
+  if (!otherUid) return;
+  if (!confirm(`Bloquer ${otherName} ? Vous ne recevrez plus ses messages.`)) return;
+  const blockedAt = Date.now();
+  const existing = userProfile.blocked || [];
+  // Evite les doublons
+  const already = existing.find(b => b.uid === otherUid);
+  if (!already) {
+    const newBlocked = [...existing, { uid: otherUid, blockedAt }];
+    await updateDoc(doc(db, 'users', currentUser.uid), { blocked: newBlocked });
+    userProfile.blocked = newBlocked;
+  }
+  closeModal('team-info-modal');
+  closeTeamDetailModal();
+  showToast(`${otherName} bloqué`);
+};
+
 window.leaveTeam = async () => {
   if (!currentTeamId) return;
   const ref2 = doc(db,'teams',currentTeamId);
@@ -576,7 +670,7 @@ window.leaveTeam = async () => {
   });
   closeModal('team-info-modal');
   closeTeamDetailModal();
-  showToast('👋 Équipe quittée');
+  showToast('Équipe quittée');
 };
 
 window.openTeamTaskModal = () => {

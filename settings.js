@@ -376,6 +376,9 @@ const HELP_CONTENT = [
     Crée une équipe ou rejoins-en une avec son ID. Le créateur valide les demandes d'adhésion.<br><br>
     Choisis un avatar de groupe dans Paramètres, visible uniquement par tes coéquipiers. Le créateur peut aussi autoriser ou bloquer la copie de l'ID de l'équipe.<br><br>
     Dans le chat d'équipe, les messages et les tâches partagées se mélangent dans le même fil, avec réactions (1 par personne).` },
+  { key: 'dm', icon: 'fa-message', title: 'Messages privés (DM)', body: `
+    Dans le but de garder vos conversations confidentielles, elles dureront <strong>72h</strong> puis seront supprimées automatiquement. De plus, vous avez <strong>50 messages maximum</strong> afin de mieux garantir la confidentialité de vos échanges.<br><br>
+    Tu peux bloquer une personne depuis le menu info du DM. Les messages envoyés pendant la période de blocage ne s'afficheront plus jamais, même après déblocage.` },
   { key: 'settings', icon: 'fa-gear', title: 'Paramètres', body: `
     Personnalise ton thème (sombre/clair), ta couleur d'accent (bleu/vert/orange/violet), ton pseudo et mot de passe (avec confirmation de l'ancien), tes notifications, et les réglages du mode concentration.` },
 ];

@@ -579,6 +579,8 @@ async function syncUserProfileFromFirebase() {
       // résiduelles d'un compte précédent encore en mémoire JS.
       settings = data.settings ? { ...data.settings } : { groupNotif: true, hidePseudo: false };
       await savePref('settings', settings);
+      // Charger la liste de blocage
+      userProfile.blocked = data.blocked || [];
 
       // accentColor vit dans settings — on le restaure aussi dans son
       // propre slot prefs pour que loadPrefs() le retrouve aux prochains boots.
@@ -784,6 +786,8 @@ function startListeners() {
     renderTeams();
     updateTeamsBadge();
     startTeamUnreadListeners();
+    // Précharge les profils des autres utilisateurs dans les DMs
+    if (typeof prefetchDMProfiles === 'function') prefetchDMProfiles();
   }, (err) => console.error('Erreur Firestore teams:', err));
 
   // Mémos : même pattern offline-first que les tâches.
