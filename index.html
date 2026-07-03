@@ -1360,21 +1360,96 @@
     .dash-empty-txt { font-size: 14px; color: var(--text2); }
 
     /* ─── Streak premium ─── */
-    .dash-streak-row {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 18px; padding: 14px 16px;
+    /* ── CARTE FLAMME VIVANTE ─────────────────────────────────── */
+    .flame-card {
+      display: flex; gap: 14px; align-items: center;
+      border-radius: 20px; padding: 18px 16px;
+      margin-bottom: 18px; position: relative; overflow: hidden;
+      transition: background 1.2s ease, box-shadow 1.2s ease;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
     }
-    .dash-streak-fire { font-size: 28px; flex-shrink: 0; color: #94a3b8; transition: color 0.3s, transform 0.3s; }
-    .dash-streak-fire.lvl1 { color: #fb923c; }
-    .dash-streak-fire.lvl2 { color: #f97316; transform: scale(1.1); }
-    .dash-streak-fire.lvl3 { color: #ef4444; transform: scale(1.2); animation: flamePulse 1.5s infinite ease-in-out; }
-    @keyframes flamePulse { 0%, 100% { transform: scale(1.2); } 50% { transform: scale(1.35); } }
-    .dash-streak-text { display: flex; align-items: baseline; gap: 4px; }
-    .dash-streak-num { font-size: 22px; font-weight: 900; }
-    .dash-streak-sub { font-size: 12px; color: var(--text3); }
-    .dash-streak-bar-wrap { flex: 1; background: var(--bg3); border-radius: 6px; height: 6px; overflow: hidden; }
-    .dash-streak-bar { height: 100%; background: var(--blue); border-radius: 6px; transition: width 0.6s ease; }
+    .flame-card.heat-low  { background: linear-gradient(135deg, #1e2a1e 0%, #0f1a0f 100%); box-shadow: 0 4px 24px rgba(34,197,94,0.15); }
+    .flame-card.heat-mid  { background: linear-gradient(135deg, #2a1e0f 0%, #1a0f00 100%); box-shadow: 0 4px 24px rgba(251,146,60,0.2); }
+    .flame-card.heat-high { background: linear-gradient(135deg, #2a0f0f 0%, #1a0000 100%); box-shadow: 0 4px 24px rgba(239,68,68,0.25); }
+    .flame-card.heat-max  { background: linear-gradient(135deg, #1a0a2a 0%, #0a0015 100%); box-shadow: 0 4px 32px rgba(139,92,246,0.3); }
+
+    /* Flamme SVG animée */
+    .flame-wrap {
+      flex-shrink: 0; width: 64px; height: 80px;
+      display: flex; align-items: flex-end; justify-content: center;
+      position: relative;
+    }
+    .flame-svg { width: 100%; height: 100%; }
+
+    /* Particule inner de la flamme */
+    @keyframes flameWave {
+      0%,100% { d: path("M32 72 C20 60 10 45 18 30 C22 22 28 18 32 10 C36 18 42 22 46 30 C54 45 44 60 32 72Z"); }
+      33%      { d: path("M32 72 C18 58 8 42 16 28 C21 19 30 16 32 8  C34 16 43 21 48 28 C56 42 46 58 32 72Z"); }
+      66%      { d: path("M32 72 C22 62 12 48 20 32 C24 24 29 20 32 12 C35 20 40 24 44 32 C52 48 42 62 32 72Z"); }
+    }
+    @keyframes flameInner {
+      0%,100% { d: path("M32 65 C26 55 22 44 26 34 C28 28 30 24 32 18 C34 24 36 28 38 34 C42 44 38 55 32 65Z"); }
+      50%      { d: path("M32 65 C24 53 20 42 24 32 C27 26 31 22 32 16 C33 22 37 26 40 32 C44 42 40 53 32 65Z"); }
+    }
+    @keyframes flameTip {
+      0%,100% { d: path("M32 40 C30 34 29 30 32 24 C35 30 34 34 32 40Z"); opacity:0.9; }
+      50%      { d: path("M32 38 C29 32 28 28 32 22 C36 28 35 32 32 38Z"); opacity:0.7; }
+    }
+    @keyframes flameGlow {
+      0%,100% { opacity: 0.6; transform: scale(1); }
+      50%      { opacity: 1;   transform: scale(1.08); }
+    }
+
+    .flame-outer { animation: flameWave 2.4s ease-in-out infinite; fill: #f97316; }
+    .flame-mid   { animation: flameInner 1.8s ease-in-out infinite 0.2s; fill: #fbbf24; }
+    .flame-tip   { animation: flameTip 1.4s ease-in-out infinite 0.1s; fill: #93c5fd; }
+    .flame-glow  {
+      position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 44px; height: 20px; border-radius: 50%;
+      background: radial-gradient(ellipse, #f97316 0%, transparent 70%);
+      animation: flameGlow 2s ease-in-out infinite; pointer-events: none;
+    }
+
+    /* Taille flamme selon niveau */
+    .flame-wrap.sz1 { transform: scale(0.55); transform-origin: bottom center; }
+    .flame-wrap.sz2 { transform: scale(0.70); transform-origin: bottom center; }
+    .flame-wrap.sz3 { transform: scale(0.85); transform-origin: bottom center; }
+    .flame-wrap.sz4 { transform: scale(1.00); transform-origin: bottom center; }
+    .flame-wrap.sz5 { transform: scale(1.15); transform-origin: bottom center; }
+
+    /* Couleur flamme selon niveau */
+    .flame-wrap.clr-cold .flame-outer { fill: #94a3b8; } .flame-wrap.clr-cold .flame-mid { fill: #cbd5e1; } .flame-wrap.clr-cold .flame-tip { fill: #e2e8f0; } .flame-wrap.clr-cold .flame-glow { background: radial-gradient(ellipse, #94a3b8 0%, transparent 70%); }
+    .flame-wrap.clr-green .flame-outer { fill: #22c55e; } .flame-wrap.clr-green .flame-mid { fill: #86efac; } .flame-wrap.clr-green .flame-tip { fill: #bbf7d0; } .flame-wrap.clr-green .flame-glow { background: radial-gradient(ellipse, #22c55e 0%, transparent 70%); }
+    .flame-wrap.clr-orange .flame-outer { fill: #f97316; } .flame-wrap.clr-orange .flame-mid { fill: #fbbf24; } .flame-wrap.clr-orange .flame-tip { fill: #93c5fd; } .flame-wrap.clr-orange .flame-glow { background: radial-gradient(ellipse, #f97316 0%, transparent 70%); }
+    .flame-wrap.clr-red .flame-outer { fill: #ef4444; } .flame-wrap.clr-red .flame-mid { fill: #f97316; } .flame-wrap.clr-red .flame-tip { fill: #60a5fa; } .flame-wrap.clr-red .flame-glow { background: radial-gradient(ellipse, #ef4444 0%, transparent 70%); }
+    .flame-wrap.clr-purple .flame-outer { fill: #a855f7; } .flame-wrap.clr-purple .flame-mid { fill: #c084fc; } .flame-wrap.clr-purple .flame-tip { fill: #67e8f9; } .flame-wrap.clr-purple .flame-glow { background: radial-gradient(ellipse, #a855f7 0%, transparent 70%); }
+
+    /* Stats carousel */
+    .flame-stats { flex: 1; min-width: 0; overflow: hidden; }
+    .flame-stat-slide {
+      display: none; flex-direction: column; gap: 3px;
+      animation: slideUp 0.4s ease;
+    }
+    .flame-stat-slide.active { display: flex; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .flame-stat-label { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; }
+    .flame-stat-value { font-size: 22px; font-weight: 900; color: #fff; line-height: 1; }
+    .flame-stat-sub   { font-size: 12px; color: rgba(255,255,255,0.6); }
+    .flame-dots { display: flex; gap: 5px; margin-top: 8px; }
+    .flame-dot  { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: background 0.3s; }
+    .flame-dot.active { background: rgba(255,255,255,0.85); }
+    @keyframes particleUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-40px) scale(0.3); }
+    }
+
+    /* Ancien streak — supprimé */
+    .dash-streak-row { display: none; }
+    .dash-streak-fire, .dash-streak-text, .dash-streak-bar-wrap { display: none; }
 
     /* ─── HABITUDES ─── */
     .habit-card {
@@ -1657,6 +1732,54 @@
     </div>
     <div id="my-day-wrap" style="margin-bottom:18px;">
       <div id="my-day-list"></div>
+    </div>
+
+    <!-- CARTE FLAMME VIVANTE -->
+    <div class="flame-card" id="flame-card">
+      <!-- Flamme SVG animée -->
+      <div class="flame-wrap sz2 clr-orange" id="flame-wrap">
+        <div class="flame-glow"></div>
+        <svg class="flame-svg" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
+          <path class="flame-outer" d="M32 72 C20 60 10 45 18 30 C22 22 28 18 32 10 C36 18 42 22 46 30 C54 45 44 60 32 72Z"/>
+          <path class="flame-mid"   d="M32 65 C26 55 22 44 26 34 C28 28 30 24 32 18 C34 24 36 28 38 34 C42 44 38 55 32 65Z"/>
+          <path class="flame-tip"   d="M32 40 C30 34 29 30 32 24 C35 30 34 34 32 40Z"/>
+        </svg>
+      </div>
+      <!-- Stats carousel -->
+      <div class="flame-stats" id="flame-stats">
+        <div class="flame-stat-slide active" data-slide="0">
+          <div class="flame-stat-label">Série active</div>
+          <div class="flame-stat-value" id="flame-streak-val">0</div>
+          <div class="flame-stat-sub" id="flame-streak-sub">jour consécutif</div>
+        </div>
+        <div class="flame-stat-slide" data-slide="1">
+          <div class="flame-stat-label">Aujourd'hui</div>
+          <div class="flame-stat-value" id="flame-today-val">0</div>
+          <div class="flame-stat-sub" id="flame-today-sub">tâche complétée</div>
+        </div>
+        <div class="flame-stat-slide" data-slide="2">
+          <div class="flame-stat-label">Cette semaine</div>
+          <div class="flame-stat-value" id="flame-week-val">0</div>
+          <div class="flame-stat-sub" id="flame-week-sub">tâche réussie</div>
+        </div>
+        <div class="flame-stat-slide" data-slide="3">
+          <div class="flame-stat-label">Progression</div>
+          <div class="flame-stat-value" id="flame-pct-val">0%</div>
+          <div class="flame-stat-sub" id="flame-pct-sub">des tâches du jour</div>
+        </div>
+        <div class="flame-stat-slide" data-slide="4">
+          <div class="flame-stat-label">Niveau flamme</div>
+          <div class="flame-stat-value" id="flame-lvl-val">35%</div>
+          <div class="flame-stat-sub">Continue comme ça</div>
+        </div>
+        <div class="flame-dots" id="flame-dots">
+          <div class="flame-dot active"></div>
+          <div class="flame-dot"></div>
+          <div class="flame-dot"></div>
+          <div class="flame-dot"></div>
+          <div class="flame-dot"></div>
+        </div>
+      </div>
     </div>
 
     <!-- TÂCHES À VENIR (nouvelles cards premium) -->
@@ -2227,7 +2350,7 @@
     <div class="team-chat-inputbar">
       <button class="team-chat-addbtn" onclick="openTeamTaskModal()"><i class="fa-solid fa-plus"></i></button>
       <textarea class="team-chat-input" id="team-chat-input" placeholder="Écrire un message…" rows="1" oninput="handleTypingInput(); autoGrowChatInput(this);" onkeydown="if(event.key==='Enter' && !event.shiftKey && window.matchMedia('(pointer: fine)').matches){event.preventDefault();sendTeamMessage();}"></textarea>
-      <button class="team-chat-sendbtn" onclick="sendTeamMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+      <button class="team-chat-sendbtn" id="team-chat-send-btn" onclick="sendTeamMessage()"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
 </div>

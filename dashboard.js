@@ -70,25 +70,156 @@ function renderHabits() {
   }).join('');
 }
 
-function renderStreak() {
-  const numEl = document.getElementById('streak-count');
-  const flameEl = document.getElementById('streak-flame');
-  const barEl = document.getElementById('dash-streak-bar');
-  if (!numEl) return;
+// ── FLAMME VIVANTE ────────────────────────────────────────────────────────────
+// Score cumulatif sauvegardé dans Firebase et IDB
+// Base : 35% au premier lancement
+// +5 par tâche complétée (bonus +3 si toutes les tâches du jour faites)
+// -5 par jour sans aucune tâche complétée
+// Min: 10%, Max: 100%
+
+let flameScore = 35; // valeur par défaut premier lancement
+let flameCarouselIndex = 0;
+let flameCarouselTimer = null;
+
+async function loadFlameScore() {
+  // 1. IDB d'abord (offline-first)
+  const cached = await idbGet('prefs', 'flameScore');
+  if (cached?.value !== undefined) flameScore = cached.value;
+  // 2. Firebase en arrière-plan
+  if (currentUser) {
+    try {
+      const snap = await getDoc(doc(db, 'users', currentUser.uid));
+      if (snap.exists() && snap.data().flameScore !== undefined) {
+        flameScore = snap.data().flameScore;
+        await idbPut('prefs', { key: 'flameScore', value: flameScore });
+      }
+    } catch(e) {}
+  }
+  renderFlame();
+}
+
+async function saveFlameScore() {
+  await idbPut('prefs', { key: 'flameScore', value: flameScore });
+  if (currentUser) {
+    updateDoc(doc(db, 'users', currentUser.uid), { flameScore }).catch(() => {});
+  }
+}
+
+async function updateFlameOnTaskComplete(taskId) {
+  const today = fmtDate(new Date());
+  const todayTasks = tasks.filter(t => t.date === today && t.status !== 'deleted');
+  const todayDone = tasks.filter(t => t.date === today && t.status === 'done');
+  const allDone = todayTasks.length > 0 && todayDone.length >= todayTasks.length;
+
+  flameScore = Math.min(100, flameScore + 5 + (allDone ? 3 : 0));
+  await saveFlameScore();
+  renderFlame();
+  // Particules au clic
+  spawnFlameParticles();
+}
+
+function checkFlameDailyDecay() {
+  // Vérifie si hier aucune tâche n'a été complétée → diminue la flamme
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const yd = fmtDate(yesterday);
+  const hadActivity = tasks.some(t => t.date === yd && t.status === 'done');
+  if (!hadActivity) {
+    flameScore = Math.max(10, flameScore - 5);
+    saveFlameScore();
+  }
+}
+
+function renderFlame() {
+  const card = document.getElementById('flame-card');
+  const wrap = document.getElementById('flame-wrap');
+  if (!card || !wrap) return;
+
+  // Taille de la flamme (5 niveaux)
+  wrap.className = 'flame-wrap';
+  if (flameScore >= 85)      { wrap.classList.add('sz5', 'clr-purple'); card.className = 'flame-card heat-max'; }
+  else if (flameScore >= 65) { wrap.classList.add('sz4', 'clr-red');    card.className = 'flame-card heat-high'; }
+  else if (flameScore >= 50) { wrap.classList.add('sz3', 'clr-orange'); card.className = 'flame-card heat-mid'; }
+  else if (flameScore >= 35) { wrap.classList.add('sz2', 'clr-orange'); card.className = 'flame-card heat-low'; }
+  else                        { wrap.classList.add('sz1', 'clr-cold');  card.className = 'flame-card'; }
+
+  // Stats
+  const today = fmtDate(new Date());
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+
+  const todayDone  = tasks.filter(t => t.date === today && t.status === 'done').length;
+  const todayTotal = tasks.filter(t => t.date === today && t.status !== 'deleted').length;
+  const weekDone   = tasks.filter(t => { if (!t.date) return false; const d = new Date(t.date); return d >= weekStart && d < weekEnd && t.status === 'done'; }).length;
+  const pctToday   = todayTotal > 0 ? Math.round(todayDone / todayTotal * 100) : 0;
+
+  // Streak
   const doneDates = new Set(tasks.filter(t => t.status === 'done' && t.date).map(t => t.date));
-  let streak = 0;
-  let cursor = new Date();
+  let streak = 0; let cursor = new Date();
   if (!doneDates.has(fmtDate(cursor))) cursor.setDate(cursor.getDate() - 1);
   while (doneDates.has(fmtDate(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
-  numEl.textContent = `${streak} jour${streak > 1 ? 's' : ''}`;
-  if (flameEl) {
-    flameEl.classList.remove('lvl1','lvl2','lvl3');
-    if (streak >= 14) flameEl.classList.add('lvl3');
-    else if (streak >= 7) flameEl.classList.add('lvl2');
-    else if (streak >= 1) flameEl.classList.add('lvl1');
-  }
-  if (barEl) barEl.style.width = Math.min(100, (streak / 30) * 100) + '%';
+
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setText('flame-streak-val', streak);
+  setText('flame-streak-sub', `jour${streak > 1 ? 's' : ''} consécutif${streak > 1 ? 's' : ''}`);
+  setText('flame-today-val', todayDone);
+  setText('flame-today-sub', `tâche${todayDone > 1 ? 's' : ''} complétée${todayDone > 1 ? 's' : ''} aujourd'hui`);
+  setText('flame-week-val', weekDone);
+  setText('flame-week-sub', `tâche${weekDone > 1 ? 's' : ''} cette semaine`);
+  setText('flame-pct-val', pctToday + '%');
+  setText('flame-pct-sub', todayTotal > 0 ? `sur ${todayTotal} tâche${todayTotal > 1 ? 's' : ''} du jour` : 'aucune tâche planifiée');
+  setText('flame-lvl-val', flameScore + '%');
+
+  // Lancer carousel si pas déjà actif
+  if (!flameCarouselTimer) startFlameCarousel();
 }
+
+function startFlameCarousel() {
+  const slides = document.querySelectorAll('.flame-stat-slide');
+  const dots   = document.querySelectorAll('.flame-dot');
+  if (!slides.length) return;
+
+  // Swipe support
+  const stats = document.getElementById('flame-stats');
+  let touchStartX = 0;
+  if (stats && !stats._swipeSet) {
+    stats._swipeSet = true;
+    stats.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    stats.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 40) goFlameSlide(dx < 0 ? 1 : -1);
+    });
+  }
+
+  flameCarouselTimer = setInterval(() => goFlameSlide(1), 3000);
+}
+
+function goFlameSlide(dir) {
+  const slides = document.querySelectorAll('.flame-stat-slide');
+  const dots   = document.querySelectorAll('.flame-dot');
+  if (!slides.length) return;
+  slides[flameCarouselIndex].classList.remove('active');
+  dots[flameCarouselIndex]?.classList.remove('active');
+  flameCarouselIndex = (flameCarouselIndex + dir + slides.length) % slides.length;
+  slides[flameCarouselIndex].classList.add('active');
+  dots[flameCarouselIndex]?.classList.add('active');
+}
+
+function spawnFlameParticles() {
+  const card = document.getElementById('flame-card');
+  if (!card) return;
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.style.cssText = `position:absolute;pointer-events:none;width:6px;height:6px;border-radius:50%;
+      background:${['#f97316','#fbbf24','#ef4444','#93c5fd'][Math.floor(Math.random()*4)]};
+      left:${20 + Math.random() * 40}px;bottom:${10 + Math.random() * 20}px;z-index:10;
+      animation:particleUp 0.8s ease forwards;`;
+    card.appendChild(p);
+    setTimeout(() => p.remove(), 800);
+  }
+}
+
+function renderStreak() { renderFlame(); } // compatibilité ancienne référence
 
 // Greeting : affiché 2x par jour (matin + soir), disparaît après 3 min
 let greetingShownToday = { morning: false, evening: false };

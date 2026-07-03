@@ -314,6 +314,10 @@ window.toggleTask = async (id) => {
   await queuePush('update', 'tasks', id, { status: newStatus });
   if (navigator.onLine) await window.queueFlush();
   showToast(newStatus==='done' ? 'Terminée !' : 'Rouverte');
+  // Mise à jour de la flamme uniquement quand on marque comme terminé
+  if (newStatus === 'done' && typeof updateFlameOnTaskComplete === 'function') {
+    await updateFlameOnTaskComplete(id);
+  }
   if (newStatus === 'done' && t.recurrence) await regenerateRecurringTask(t);
 };
 

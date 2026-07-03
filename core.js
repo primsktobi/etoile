@@ -255,6 +255,8 @@ function runBoot() {
       resetMotivationForNewSession();
       resetGreetingForNewSession();
       setTimeout(maybeShowMotivationQuote, 600);
+      // Flamme vivante — charger le score et vérifier la décroissance journalière
+      if (typeof loadFlameScore === 'function') { loadFlameScore(); checkFlameDailyDecay(); }
     } else {
       currentUser = null;
       resetMotivationForNewSession();

@@ -292,11 +292,28 @@ window.openTeamDetail = async (teamId) => {
     }
     document.getElementById('team-chat-members-count').textContent = 'Message privé';
     document.getElementById('team-detail-id').textContent = team.id;
+
+    // Vérifier si l'autre personne est bloquée — désactiver l'input si oui
+    const blocked = userProfile.blocked || [];
+    const block = blocked.find(b => b.uid === other?.uid);
+    const isBlocked = block && (!block.unblockedAt || Date.now() < block.unblockedAt);
+    const chatInput = document.getElementById('team-chat-input');
+    const sendBtn = document.getElementById('team-chat-send-btn');
+    if (chatInput) {
+      chatInput.disabled = isBlocked;
+      chatInput.placeholder = isBlocked ? `Vous avez bloqué ${otherName}` : 'Écrire un message…';
+    }
+    if (sendBtn) sendBtn.disabled = isBlocked;
   } else {
     document.getElementById('team-detail-name').textContent = team.name;
     document.getElementById('team-chat-avatar').textContent = (team.name||'??').slice(0,2).toUpperCase();
     document.getElementById('team-chat-members-count').textContent = `${team.memberIds?.length||0} membre${(team.memberIds?.length||0)>1?'s':''}`;
     document.getElementById('team-detail-id').textContent = team.id;
+    // Réactiver l'input pour les groupes normaux
+    const chatInput = document.getElementById('team-chat-input');
+    const sendBtn = document.getElementById('team-chat-send-btn');
+    if (chatInput) { chatInput.disabled = false; chatInput.placeholder = 'Écrire un message…'; }
+    if (sendBtn) sendBtn.disabled = false;
   }
 
   renderTeamMembersInfo(team);
@@ -382,8 +399,19 @@ window.openTeamInfoModal = async () => {
     const other = team.members?.find(m => m.uid !== currentUser.uid);
     const otherName = other?.pseudo || '?';
     document.getElementById('team-info-title').textContent = otherName;
-    document.getElementById('team-leave-btn').textContent = `Bloquer ${otherName}`;
-    document.getElementById('team-leave-btn').onclick = () => blockDMUser(other?.uid, otherName);
+
+    // Vérifier l'état du blocage actuel
+    const blocked = userProfile.blocked || [];
+    const block = blocked.find(b => b.uid === other?.uid);
+    const isBlocked = block && (!block.unblockedAt || Date.now() < block.unblockedAt);
+
+    if (isBlocked) {
+      document.getElementById('team-leave-btn').textContent = `Débloquer ${otherName}`;
+      document.getElementById('team-leave-btn').onclick = () => unblockDMUser(other?.uid, otherName);
+    } else {
+      document.getElementById('team-leave-btn').textContent = `Bloquer ${otherName}`;
+      document.getElementById('team-leave-btn').onclick = () => blockDMUser(other?.uid, otherName);
+    }
   } else {
     document.getElementById('team-info-title').textContent = 'Informations';
     document.getElementById('team-leave-btn').textContent = 'Quitter l\'équipe';
@@ -395,14 +423,29 @@ window.openTeamInfoModal = async () => {
 };
 
 // ── Chat listener : messages + tâches mélangés, triés par date ──
+// Cache de la dernière conversation ouverte — garde les messages en mémoire
+// pour éviter la latence au retour dans un chat récemment visité
+let lastChatCache = { teamId: null, msgs: [], tsks: [] };
+
 function startTeamChatListener(teamId) {
+  // Si c'est la même conversation que la dernière ouverte, afficher
+  // immédiatement depuis le cache pendant que le listener se réabonne
+  if (lastChatCache.teamId === teamId && (lastChatCache.msgs.length || lastChatCache.tsks.length)) {
+    const cached = [...lastChatCache.msgs, ...lastChatCache.tsks];
+    cached.sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
+    teamChatCache = cached;
+    renderTeamChat(cached);
+  }
+
   if (teamItemsUnsub) teamItemsUnsub();
-  let msgs = [], tsks = [];
+  let msgs = [...lastChatCache.msgs], tsks = [...lastChatCache.tsks];
 
   const renderMerged = () => {
     const merged = [...msgs, ...tsks];
     merged.sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
     teamChatCache = merged;
+    // Sauvegarder dans le cache de la dernière conversation
+    lastChatCache = { teamId, msgs: [...msgs], tsks: [...tsks] };
     renderTeamChat(merged);
   };
 
@@ -420,14 +463,22 @@ function startTeamChatListener(teamId) {
     renderMerged();
   }, e => console.error('chat tasks:', e));
 
-  // Le statut "en train d'écrire" ne touche plus jamais à la liste des messages —
-  // seul un petit bloc dédié (typing-indicator-slot) est mis à jour, pour éviter
-  // de redessiner tout le fil (et donc de faire "sauter" l'écran) à chaque frappe.
   const unsub3 = onSnapshot(typingQ, snap => {
     const now = Date.now();
+    const blocked = userProfile.blocked || [];
     const typingUsers = snap.docs
       .map(d => d.data())
-      .filter(t => t.uid !== currentUser.uid && (now - (t.updatedAt?.toMillis?.() || 0)) < 5000);
+      .filter(t => {
+        if (t.uid === currentUser.uid) return false;
+        if ((now - (t.updatedAt?.toMillis?.() || 0)) >= 5000) return false;
+        // Masquer l'indicateur si l'auteur est bloqué
+        const block = blocked.find(b => b.uid === t.uid);
+        if (block) {
+          const unblockedAt = block.unblockedAt || Infinity;
+          if (now >= block.blockedAt && now < unblockedAt) return false;
+        }
+        return true;
+      });
     renderTypingIndicator(typingUsers);
   }, e => console.error('typing status:', e));
 
@@ -473,7 +524,7 @@ function renderTeamChat(items) {
     feed.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-comments"></i></div><div class="empty-title">Aucun message ni tâche</div><div class="empty-sub">Écris un message ou ajoute une tâche avec +</div></div><div id="typing-indicator-slot"></div>`;
     return;
   }
-  feed.innerHTML = items.map(it => it.kind === 'task' ? teamTaskChatHTML(it) : teamMessageHTML(it, isDM)).join('') + '<div id="typing-indicator-slot"></div>';
+  feed.innerHTML = items.map(it => it.kind === 'task' ? teamTaskChatHTML(it, isDM) : teamMessageHTML(it, isDM)).join('') + '<div id="typing-indicator-slot"></div>';
   if (wasNearBottom) {
     requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
   }
@@ -516,7 +567,18 @@ function teamMessageHTML(m, isDM) {
 
 const REACTION_EMOJIS = ['👍','👎','☝️','😎','😡'];
 
-function teamTaskChatHTML(t) {
+function teamTaskChatHTML(t, isDM) {
+  // Filtrage blocage sur les tâches — même logique que les messages
+  if (isDM && t.creatorUid !== currentUser.uid) {
+    const blocked = userProfile.blocked || [];
+    const block = blocked.find(b => b.uid === t.creatorUid);
+    if (block) {
+      const taskTs = t.timestamp?.toMillis?.() || 0;
+      const unblockedAt = block.unblockedAt || Infinity;
+      if (taskTs >= block.blockedAt && taskTs < unblockedAt) return '';
+    }
+  }
+
   const color = t.color || '#2563eb';
   const reactions = t.reactions || {};
   const reactionsHtml = Object.entries(reactions).filter(([,uids]) => uids.length>0).map(([emoji, uids]) => {
@@ -532,10 +594,10 @@ function teamTaskChatHTML(t) {
       ${t.content?`<div class="chat-task-content">${escHtml(t.content)}</div>`:''}
       <div class="task-meta">
         ${t.date?`<span class="task-tag">📅 ${fmt(t.date)}${t.time?' '+t.time:''}</span>`:''}
-        <span class="task-tag">👤 ${escHtml(t.creatorPseudo||'?')}</span>
+        ${!isDM?`<span class="task-tag">👤 ${escHtml(t.creatorPseudo||'?')}</span>`:''}
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px;">
-        Créé ${fmtTs(t.timestamp)}${t.updatedAt ? ' · Modifié '+fmtTs(t.updatedAt)+(t.lastModifiedBy?' par '+escHtml(t.lastModifiedBy):'') : ''}
+        Créé ${fmtTs(t.timestamp)}${t.updatedAt ? ' · Modifié '+fmtTs(t.updatedAt)+(t.lastModifiedBy&&!isDM?' par '+escHtml(t.lastModifiedBy):'') : ''}
       </div>
     </div>
     <div class="chat-reactions">
@@ -644,10 +706,9 @@ window.rejectMember = async (teamId, uid) => {
 
 window.blockDMUser = async (otherUid, otherName) => {
   if (!otherUid) return;
-  if (!confirm(`Bloquer ${otherName} ? Vous ne recevrez plus ses messages.`)) return;
+  if (!confirm(`Bloquer ${otherName} ? Vous ne recevrez plus ses messages ni ses tâches.`)) return;
   const blockedAt = Date.now();
   const existing = userProfile.blocked || [];
-  // Evite les doublons
   const already = existing.find(b => b.uid === otherUid);
   if (!already) {
     const newBlocked = [...existing, { uid: otherUid, blockedAt }];
@@ -657,6 +718,26 @@ window.blockDMUser = async (otherUid, otherName) => {
   closeModal('team-info-modal');
   closeTeamDetailModal();
   showToast(`${otherName} bloqué`);
+};
+
+window.unblockDMUser = async (otherUid, otherName) => {
+  if (!confirm(`Débloquer ${otherName} ?`)) return;
+  const now = Date.now();
+  const existing = userProfile.blocked || [];
+  // On garde l'entrée mais on ajoute unblockedAt — permet de continuer
+  // à filtrer les messages envoyés PENDANT la période de blocage
+  const newBlocked = existing.map(b =>
+    b.uid === otherUid ? { ...b, unblockedAt: now } : b
+  );
+  await updateDoc(doc(db, 'users', currentUser.uid), { blocked: newBlocked });
+  userProfile.blocked = newBlocked;
+  closeModal('team-info-modal');
+  showToast(`${otherName} débloqué`);
+  // Réactiver l'input
+  const chatInput = document.getElementById('team-chat-input');
+  const sendBtn = document.getElementById('team-chat-send-btn');
+  if (chatInput) { chatInput.disabled = false; chatInput.placeholder = 'Écrire un message…'; }
+  if (sendBtn) sendBtn.disabled = false;
 };
 
 window.leaveTeam = async () => {
