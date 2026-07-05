@@ -318,6 +318,14 @@ window.toggleTask = async (id) => {
   if (newStatus === 'done' && typeof updateFlameOnTaskComplete === 'function') {
     await updateFlameOnTaskComplete(id);
   }
+  // Célébration si palier de streak atteint
+  if (newStatus === 'done' && typeof showTaskCompletionCelebration === 'function') {
+    const doneDates = new Set(tasks.filter(t => t.status === 'done' && t.date).map(t => t.date));
+    let streak = 0; let cursor = new Date();
+    if (!doneDates.has(cursor.toISOString().slice(0,10))) cursor.setDate(cursor.getDate()-1);
+    while (doneDates.has(cursor.toISOString().slice(0,10))) { streak++; cursor.setDate(cursor.getDate()-1); }
+    showTaskCompletionCelebration(streak);
+  }
   if (newStatus === 'done' && t.recurrence) await regenerateRecurringTask(t);
 };
 

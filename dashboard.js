@@ -16,7 +16,19 @@ function renderDashboard() {
   const pct = weekTasks.length > 0 ? Math.round(weekDone/weekTasks.length*100) : 0;
   setText('ring-pct', pct + '%');
   const ring = document.getElementById('ring-fill');
-  if (ring) ring.style.strokeDashoffset = 138 - (pct/100)*138;
+  if (ring) ring.style.strokeDashoffset = 150 - (pct/100)*150;
+
+  // Message de motivation dynamique selon progression hebdo
+  const motEl = document.getElementById('week-motivation');
+  if (motEl) {
+    const msgs = pct === 0  ? ['Commence ta semaine avec énergie !', 'La première tâche est la plus importante.'] :
+                 pct < 25   ? ['Tu es lancé, continue !', 'Chaque tâche compte.'] :
+                 pct < 50   ? ['Belle progression cette semaine.', 'Tu es sur la bonne voie.'] :
+                 pct < 75   ? ['Plus de la moitié du chemin parcouru !', 'Tu dépasses tes objectifs.'] :
+                 pct < 100  ? ['Presque au sommet — ne lâche pas !', 'La ligne d\'arrivée est proche.'] :
+                              ['Semaine parfaite. Tu es inarrêtable.', '100% cette semaine. Bravo.'];
+    motEl.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+  }
 
   const days = ['L','M','M','J','V','S','D'];
   const barsEl = document.getElementById('week-bars');
@@ -38,6 +50,8 @@ function renderDashboard() {
   renderUpcomingTasks();
   renderStreak();
   renderHabits();
+  if (typeof renderCoachMessage === 'function') renderCoachMessage();
+  if (typeof checkThemeUnlocks === 'function') checkThemeUnlocks();
 }
 
 
@@ -340,7 +354,7 @@ function renderMyDay() {
     .filter(t => t && t.status !== 'deleted');
 
   if (selectedTasks.length === 0) {
-    el.innerHTML = `<div class="my-day-empty">Aucune tâche choisie pour aujourd'hui — clique sur "Choisir" pour en sélectionner.</div>`;
+    el.innerHTML = '';
     return;
   }
   el.innerHTML = selectedTasks.map(t => `
@@ -399,7 +413,7 @@ function renderUpcomingTasks() {
     .slice(0, 2);
 
   if (upcoming.length === 0) {
-    el.innerHTML = `<div class="dash-empty-tasks"><div class="dash-empty-icon">☕</div><div class="dash-empty-txt">Aucune tâche à venir<br>Profite du moment !</div></div>`;
+    el.innerHTML = `<div style="padding:10px 4px;color:var(--text3);font-size:12px;text-align:center;">Aucune tâche à venir</div>`;
     return;
   }
 

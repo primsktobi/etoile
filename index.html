@@ -53,6 +53,103 @@
       --nav-bg: #ffffffee;
     }
 
+    /* ── THÈME COSMOS (débloqué : semaine parfaite) ─────────────────── */
+    [data-theme="cosmos"] {
+      --bg: #04020e;
+      --bg2: #080318;
+      --bg3: #0f0525;
+      --card: #0d0820cc;
+      --border: #4a2d8833;
+      --text: #e8e0ff;
+      --text2: #a090cc;
+      --text3: #604a99;
+      --nav-bg: #06031aee;
+      --accent: #7c3aed;
+      --blue: #7c3aed;
+      --blue-light: #a78bfa;
+    }
+    [data-theme="cosmos"] body {
+      background: radial-gradient(ellipse at 50% 30%, #1a0a4a 0%, #04020e 60%) fixed;
+    }
+    [data-theme="cosmos"] .card,
+    [data-theme="cosmos"] .task-card-premium,
+    [data-theme="cosmos"] .flame-card {
+      background: rgba(13,8,32,0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(124,58,237,0.2);
+    }
+    [data-theme="cosmos"] .bottom-nav {
+      background: rgba(4,2,14,0.92);
+      border-top: 1px solid rgba(124,58,237,0.2);
+      backdrop-filter: blur(16px);
+    }
+    /* Halo cosmique central */
+    [data-theme="cosmos"] #screen-dashboard::before {
+      content: '';
+      position: fixed; top: 20%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, rgba(59,130,246,0.08) 40%, transparent 70%);
+      pointer-events: none; z-index: 0;
+      animation: cosmosHalo 6s ease-in-out infinite;
+    }
+    @keyframes cosmosHalo {
+      0%,100% { transform: translate(-50%,-50%) scale(1); opacity:0.7; }
+      50%      { transform: translate(-50%,-50%) scale(1.1); opacity:1; }
+    }
+    [data-theme="cosmos"] .section-title,
+    [data-theme="cosmos"] .dash-week-pct,
+    [data-theme="cosmos"] .flame-stat-value { color: #e8e0ff; }
+    [data-theme="cosmos"] .btn-primary { background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+
+    /* ── THÈME SOLEIL LEVANT (débloqué : mois parfait) ──────────────── */
+    [data-theme="sunrise"] {
+      --bg: #080400;
+      --bg2: #120800;
+      --bg3: #1e0f00;
+      --card: #160a00cc;
+      --border: #8b4a0033;
+      --text: #fff8f0;
+      --text2: #d4a574;
+      --text3: #8b5a2a;
+      --nav-bg: #0a0500ee;
+      --accent: #f97316;
+      --blue: #ea580c;
+      --blue-light: #fb923c;
+    }
+    [data-theme="sunrise"] body {
+      background: linear-gradient(180deg, #0a0400 0%, #1a0800 30%, #2d1000 60%, #1a0800 100%) fixed;
+    }
+    [data-theme="sunrise"] .card,
+    [data-theme="sunrise"] .task-card-premium,
+    [data-theme="sunrise"] .flame-card {
+      background: rgba(22,10,0,0.80);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(249,115,22,0.2);
+      box-shadow: 0 0 0 0.5px rgba(249,115,22,0.1), inset 0 1px 0 rgba(251,191,36,0.08);
+    }
+    [data-theme="sunrise"] .bottom-nav {
+      background: rgba(8,4,0,0.92);
+      border-top: 1px solid rgba(249,115,22,0.2);
+      backdrop-filter: blur(16px);
+    }
+    /* Lueur dorée en bas */
+    [data-theme="sunrise"] body::after {
+      content: '';
+      position: fixed; bottom: 0; left: 0; right: 0; height: 200px;
+      background: linear-gradient(0deg, rgba(249,115,22,0.08) 0%, transparent 100%);
+      pointer-events: none; z-index: 0;
+    }
+    [data-theme="sunrise"] .section-title { color: #fff8f0; }
+    [data-theme="sunrise"] .dash-week-pct { color: #fbbf24; }
+    [data-theme="sunrise"] .flame-stat-value { color: #fff8f0; }
+    [data-theme="sunrise"] .btn-primary { background: linear-gradient(135deg, #ea580c, #dc2626); }
+    [data-theme="sunrise"] .dash-week-card {
+      background: linear-gradient(140deg, #7c2d12 0%, #1c0a00 100%);
+      box-shadow: 0 8px 28px rgba(234,88,12,0.25);
+    }
+
     /* ─── RESET ─── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -1362,96 +1459,133 @@
     /* ─── Streak premium ─── */
     /* ── CARTE FLAMME VIVANTE ─────────────────────────────────── */
     .flame-card {
-      display: flex; gap: 14px; align-items: center;
-      border-radius: 20px; padding: 18px 16px;
+      display: flex; gap: 0; align-items: center;
+      justify-content: space-between;
+      border-radius: 20px; padding: 18px 20px;
       margin-bottom: 18px; position: relative; overflow: hidden;
-      transition: background 1.2s ease, box-shadow 1.2s ease;
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      transition: background 1.8s ease, box-shadow 1.8s ease;
+      background: linear-gradient(135deg, #1a2744 0%, #0d1829 100%);
       box-shadow: 0 4px 24px rgba(0,0,0,0.3);
     }
-    .flame-card.heat-low  { background: linear-gradient(135deg, #1e2a1e 0%, #0f1a0f 100%); box-shadow: 0 4px 24px rgba(34,197,94,0.15); }
-    .flame-card.heat-mid  { background: linear-gradient(135deg, #2a1e0f 0%, #1a0f00 100%); box-shadow: 0 4px 24px rgba(251,146,60,0.2); }
-    .flame-card.heat-high { background: linear-gradient(135deg, #2a0f0f 0%, #1a0000 100%); box-shadow: 0 4px 24px rgba(239,68,68,0.25); }
-    .flame-card.heat-max  { background: linear-gradient(135deg, #1a0a2a 0%, #0a0015 100%); box-shadow: 0 4px 32px rgba(139,92,246,0.3); }
+    .flame-card.heat-low  { background: linear-gradient(135deg, #0f2318 0%, #071510 100%); box-shadow: 0 4px 20px rgba(34,197,94,0.12); }
+    .flame-card.heat-mid  { background: linear-gradient(135deg, #1f1608 0%, #120d04 100%); box-shadow: 0 4px 20px rgba(251,146,60,0.15); }
+    .flame-card.heat-high { background: linear-gradient(135deg, #200a0a 0%, #130404 100%); box-shadow: 0 4px 20px rgba(239,68,68,0.18); }
+    .flame-card.heat-max  { background: linear-gradient(135deg, #130820 0%, #0a0415 100%); box-shadow: 0 4px 28px rgba(168,85,247,0.22); }
 
-    /* Flamme SVG animée */
     .flame-wrap {
-      flex-shrink: 0; width: 64px; height: 80px;
+      flex-shrink: 0; width: 72px; height: 90px;
       display: flex; align-items: flex-end; justify-content: center;
       position: relative;
     }
     .flame-svg { width: 100%; height: 100%; }
 
-    /* Particule inner de la flamme */
     @keyframes flameWave {
-      0%,100% { d: path("M32 72 C20 60 10 45 18 30 C22 22 28 18 32 10 C36 18 42 22 46 30 C54 45 44 60 32 72Z"); }
-      33%      { d: path("M32 72 C18 58 8 42 16 28 C21 19 30 16 32 8  C34 16 43 21 48 28 C56 42 46 58 32 72Z"); }
-      66%      { d: path("M32 72 C22 62 12 48 20 32 C24 24 29 20 32 12 C35 20 40 24 44 32 C52 48 42 62 32 72Z"); }
+      0%,100% { transform: scaleX(1) skewX(0deg); }
+      25%      { transform: scaleX(1.04) skewX(1.5deg); }
+      75%      { transform: scaleX(0.97) skewX(-1.5deg); }
     }
-    @keyframes flameInner {
-      0%,100% { d: path("M32 65 C26 55 22 44 26 34 C28 28 30 24 32 18 C34 24 36 28 38 34 C42 44 38 55 32 65Z"); }
-      50%      { d: path("M32 65 C24 53 20 42 24 32 C27 26 31 22 32 16 C33 22 37 26 40 32 C44 42 40 53 32 65Z"); }
+    @keyframes flamePulse {
+      0%,100% { opacity: 1; transform: scaleY(1); }
+      50%      { opacity: 0.88; transform: scaleY(0.96); }
     }
-    @keyframes flameTip {
-      0%,100% { d: path("M32 40 C30 34 29 30 32 24 C35 30 34 34 32 40Z"); opacity:0.9; }
-      50%      { d: path("M32 38 C29 32 28 28 32 22 C36 28 35 32 32 38Z"); opacity:0.7; }
+    @keyframes flameTipDance {
+      0%,100% { opacity: 0.85; transform: translateY(0) scaleX(1); }
+      33%      { opacity: 1;    transform: translateY(-2px) scaleX(0.9); }
+      66%      { opacity: 0.7;  transform: translateY(1px) scaleX(1.1); }
     }
     @keyframes flameGlow {
-      0%,100% { opacity: 0.6; transform: scale(1); }
-      50%      { opacity: 1;   transform: scale(1.08); }
+      0%,100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+      50%      { opacity: 0.9; transform: translateX(-50%) scale(1.15); }
     }
 
-    .flame-outer { animation: flameWave 2.4s ease-in-out infinite; fill: #f97316; }
-    .flame-mid   { animation: flameInner 1.8s ease-in-out infinite 0.2s; fill: #fbbf24; }
-    .flame-tip   { animation: flameTip 1.4s ease-in-out infinite 0.1s; fill: #93c5fd; }
+    .flame-outer { fill: #dc2626; animation: flameWave 2.2s ease-in-out infinite; transform-origin: 50% 90%; }
+    .flame-mid   { fill: #f97316; animation: flamePulse 1.8s ease-in-out infinite 0.15s; transform-origin: 50% 85%; }
+    .flame-core  { fill: #fbbf24; animation: flamePulse 1.5s ease-in-out infinite 0.3s; transform-origin: 50% 80%; }
+    .flame-tip   { fill: #93c5fd; animation: flameTipDance 1.3s ease-in-out infinite; transform-origin: 50% 50%; }
     .flame-glow  {
-      position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 44px; height: 20px; border-radius: 50%;
-      background: radial-gradient(ellipse, #f97316 0%, transparent 70%);
-      animation: flameGlow 2s ease-in-out infinite; pointer-events: none;
+      position: absolute; bottom: 2px; left: 50%;
+      transform: translateX(-50%);
+      width: 52px; height: 18px; border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(249,115,22,0.6) 0%, transparent 70%);
+      animation: flameGlow 2s ease-in-out infinite;
     }
 
-    /* Taille flamme selon niveau */
-    .flame-wrap.sz1 { transform: scale(0.55); transform-origin: bottom center; }
-    .flame-wrap.sz2 { transform: scale(0.70); transform-origin: bottom center; }
-    .flame-wrap.sz3 { transform: scale(0.85); transform-origin: bottom center; }
+    .flame-wrap.sz1 { transform: scale(0.50); transform-origin: bottom center; }
+    .flame-wrap.sz2 { transform: scale(0.65); transform-origin: bottom center; }
+    .flame-wrap.sz3 { transform: scale(0.82); transform-origin: bottom center; }
     .flame-wrap.sz4 { transform: scale(1.00); transform-origin: bottom center; }
-    .flame-wrap.sz5 { transform: scale(1.15); transform-origin: bottom center; }
+    .flame-wrap.sz5 { transform: scale(1.18); transform-origin: bottom center; }
 
-    /* Couleur flamme selon niveau */
-    .flame-wrap.clr-cold .flame-outer { fill: #94a3b8; } .flame-wrap.clr-cold .flame-mid { fill: #cbd5e1; } .flame-wrap.clr-cold .flame-tip { fill: #e2e8f0; } .flame-wrap.clr-cold .flame-glow { background: radial-gradient(ellipse, #94a3b8 0%, transparent 70%); }
-    .flame-wrap.clr-green .flame-outer { fill: #22c55e; } .flame-wrap.clr-green .flame-mid { fill: #86efac; } .flame-wrap.clr-green .flame-tip { fill: #bbf7d0; } .flame-wrap.clr-green .flame-glow { background: radial-gradient(ellipse, #22c55e 0%, transparent 70%); }
-    .flame-wrap.clr-orange .flame-outer { fill: #f97316; } .flame-wrap.clr-orange .flame-mid { fill: #fbbf24; } .flame-wrap.clr-orange .flame-tip { fill: #93c5fd; } .flame-wrap.clr-orange .flame-glow { background: radial-gradient(ellipse, #f97316 0%, transparent 70%); }
-    .flame-wrap.clr-red .flame-outer { fill: #ef4444; } .flame-wrap.clr-red .flame-mid { fill: #f97316; } .flame-wrap.clr-red .flame-tip { fill: #60a5fa; } .flame-wrap.clr-red .flame-glow { background: radial-gradient(ellipse, #ef4444 0%, transparent 70%); }
-    .flame-wrap.clr-purple .flame-outer { fill: #a855f7; } .flame-wrap.clr-purple .flame-mid { fill: #c084fc; } .flame-wrap.clr-purple .flame-tip { fill: #67e8f9; } .flame-wrap.clr-purple .flame-glow { background: radial-gradient(ellipse, #a855f7 0%, transparent 70%); }
+    .flame-wrap.clr-cold   .flame-outer{fill:#64748b} .flame-wrap.clr-cold .flame-mid{fill:#94a3b8} .flame-wrap.clr-cold .flame-core{fill:#cbd5e1} .flame-wrap.clr-cold .flame-tip{fill:#e2e8f0} .flame-wrap.clr-cold .flame-glow{background:radial-gradient(ellipse,rgba(100,116,139,.5) 0%,transparent 70%)}
+    .flame-wrap.clr-green  .flame-outer{fill:#16a34a} .flame-wrap.clr-green .flame-mid{fill:#22c55e} .flame-wrap.clr-green .flame-core{fill:#86efac} .flame-wrap.clr-green .flame-tip{fill:#bbf7d0} .flame-wrap.clr-green .flame-glow{background:radial-gradient(ellipse,rgba(34,197,94,.5) 0%,transparent 70%)}
+    .flame-wrap.clr-orange .flame-outer{fill:#dc2626} .flame-wrap.clr-orange .flame-mid{fill:#f97316} .flame-wrap.clr-orange .flame-core{fill:#fbbf24} .flame-wrap.clr-orange .flame-tip{fill:#93c5fd} .flame-wrap.clr-orange .flame-glow{background:radial-gradient(ellipse,rgba(249,115,22,.6) 0%,transparent 70%)}
+    .flame-wrap.clr-red    .flame-outer{fill:#991b1b} .flame-wrap.clr-red .flame-mid{fill:#ef4444} .flame-wrap.clr-red .flame-core{fill:#f97316} .flame-wrap.clr-red .flame-tip{fill:#60a5fa} .flame-wrap.clr-red .flame-glow{background:radial-gradient(ellipse,rgba(239,68,68,.6) 0%,transparent 70%)}
+    .flame-wrap.clr-purple .flame-outer{fill:#7e22ce} .flame-wrap.clr-purple .flame-mid{fill:#a855f7} .flame-wrap.clr-purple .flame-core{fill:#c084fc} .flame-wrap.clr-purple .flame-tip{fill:#67e8f9} .flame-wrap.clr-purple .flame-glow{background:radial-gradient(ellipse,rgba(168,85,247,.6) 0%,transparent 70%)}
 
-    /* Stats carousel */
-    .flame-stats { flex: 1; min-width: 0; overflow: hidden; }
-    .flame-stat-slide {
-      display: none; flex-direction: column; gap: 3px;
-      animation: slideUp 0.4s ease;
-    }
+    .flame-stats { flex: 1; min-width: 0; padding-left: 16px; overflow: hidden; }
+    .flame-stat-slide { display: none; flex-direction: column; gap: 2px; animation: slideUp 0.4s ease; }
     .flame-stat-slide.active { display: flex; }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .flame-stat-label { font-size: 10px; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+    .flame-stat-value { font-size: 26px; font-weight: 900; color: #fff; line-height: 1.1; }
+    .flame-stat-sub   { font-size: 11px; color: rgba(255,255,255,0.55); }
+    .flame-dots { display: flex; gap: 5px; margin-top: 10px; }
+    .flame-dot  { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.3s, transform 0.3s; }
+    .flame-dot.active { background: rgba(255,255,255,0.8); transform: scale(1.3); }
+    @keyframes particleUp { 0% { opacity:1; transform:translateY(0) scale(1); } 100% { opacity:0; transform:translateY(-45px) scale(0.2); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    @keyframes scaleIn { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+    .dash-streak-row, .dash-streak-fire, .dash-streak-text, .dash-streak-bar-wrap { display: none !important; }
+
+    /* ── MODULE ACTIVITÉ ─────────────────────────────────────── */
+    .activity-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 16px; margin-bottom: 14px;
     }
-    .flame-stat-label { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; }
-    .flame-stat-value { font-size: 22px; font-weight: 900; color: #fff; line-height: 1; }
-    .flame-stat-sub   { font-size: 12px; color: rgba(255,255,255,0.6); }
-    .flame-dots { display: flex; gap: 5px; margin-top: 8px; }
-    .flame-dot  { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: background 0.3s; }
-    .flame-dot.active { background: rgba(255,255,255,0.85); }
-    @keyframes particleUp {
-      0%   { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-40px) scale(0.3); }
+    .activity-card-title {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .activity-field { margin-bottom: 12px; }
+    .activity-field-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .activity-field input {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; font-size: 15px; font-weight: 700;
+      color: var(--text); outline: none; box-sizing: border-box;
+    }
+    .activity-field input:focus { border-color: var(--accent); }
+
+    /* Courbe SVG */
+    .activity-chart-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 16px; margin-bottom: 14px;
+    }
+    .activity-chart-title { font-size: 12px; font-weight: 700; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .activity-chart-value { font-size: 24px; font-weight: 900; color: var(--text); margin-bottom: 12px; }
+    .activity-chart-delta { font-size: 12px; font-weight: 600; }
+    .activity-chart-delta.up   { color: #22c55e; }
+    .activity-chart-delta.down { color: #ef4444; }
+    .activity-chart-delta.flat { color: var(--text3); }
+    .activity-svg { width: 100%; height: 80px; overflow: visible; }
+    .activity-svg-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .activity-svg-area { opacity: 0.12; }
+    .activity-svg-dot { fill: var(--accent); }
+
+    /* Modal saisie */
+    .activity-save-btn {
+      width: 100%; padding: 14px; border-radius: 14px; margin-top: 8px;
+      background: var(--accent); color: #fff; font-size: 15px; font-weight: 700;
+      border: none; cursor: pointer;
     }
 
-    /* Ancien streak — supprimé */
-    .dash-streak-row { display: none; }
-    .dash-streak-fire, .dash-streak-text, .dash-streak-bar-wrap { display: none; }
-
-    /* ─── HABITUDES ─── */
+    /* Paramètres activité */
+    .activity-profile-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .activity-profile-chip {
+      padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      background: var(--bg3); border: 2px solid var(--border); color: var(--text2);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .activity-profile-chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
     .habit-card {
       display: flex; align-items: center; gap: 12px; padding: 12px 14px;
       background: var(--card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 8px;
@@ -1478,18 +1612,30 @@
 
     /* ─── Carte progression semaine ─── */
     .dash-week-card {
-      background: linear-gradient(140deg, var(--blue) 0%, var(--blue-dark, #1e3a8a) 100%);
-      border-radius: 22px; padding: 18px; margin-bottom: 16px; color: #fff;
-      box-shadow: 0 8px 24px rgba(37,99,235,0.25);
+      background: linear-gradient(140deg, #1d4ed8 0%, #1e1b4b 100%);
+      border-radius: 22px; padding: 20px; margin-bottom: 16px; color: #fff;
+      box-shadow: 0 8px 28px rgba(29,78,216,0.3);
+      position: relative; overflow: hidden;
     }
-    .dash-week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    .dash-week-label { font-size: 12px; font-weight: 600; opacity: 0.75; margin-bottom: 4px; }
-    .dash-week-pct { font-size: 28px; font-weight: 900; }
-    .dash-week-card .week-bars { justify-content: space-between; height: 50px; }
-    .dash-week-card .week-bar { background: rgba(255,255,255,0.2); }
-    .dash-week-card .week-bar-fill { background: #fff; }
-    .dash-week-card .week-bar.today { background: rgba(255,255,255,0.3); }
-    .dash-week-card .week-day { color: rgba(255,255,255,0.7); }
+    .dash-week-card::before {
+      content: ''; position: absolute; top: -30px; right: -30px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); pointer-events: none;
+    }
+    .dash-week-card::after {
+      content: ''; position: absolute; bottom: -20px; left: -20px;
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(255,255,255,0.04); pointer-events: none;
+    }
+    .dash-week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .dash-week-label { font-size: 11px; font-weight: 700; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+    .dash-week-pct { font-size: 36px; font-weight: 900; line-height: 1; }
+    .dash-week-motivation { font-size: 12px; opacity: 0.7; margin-bottom: 14px; font-style: italic; }
+    .dash-week-card .week-bars { justify-content: space-between; height: 56px; margin-top: 12px; }
+    .dash-week-card .week-bar { background: rgba(255,255,255,0.15); border-radius: 4px 4px 0 0; }
+    .dash-week-card .week-bar-fill { background: rgba(255,255,255,0.9); border-radius: 4px 4px 0 0; }
+    .dash-week-card .week-bar.today .week-bar-fill { background: #fbbf24; }
+    .dash-week-card .week-day { color: rgba(255,255,255,0.6); font-size: 10px; }
 
     /* ─── Focus card (pendant session pomodoro) ─── */
     .dash-focus-card {
@@ -1734,18 +1880,33 @@
       <div id="my-day-list"></div>
     </div>
 
+    <!-- MESSAGE DU COACH -->
+    <div id="coach-message-wrap" style="display:none;"></div>
+
+    <!-- TÂCHES À VENIR (nouvelles cards premium) -->
+    <div class="dash-section-label">
+      <span>À venir</span>
+      <button class="dash-see-all" onclick="goTo('tasks')">Voir tout <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+    <div id="upcoming-wrap">
+      <div id="upcoming-tasks-list"></div>
+    </div>
+
     <!-- CARTE FLAMME VIVANTE -->
     <div class="flame-card" id="flame-card">
-      <!-- Flamme SVG animée -->
       <div class="flame-wrap sz2 clr-orange" id="flame-wrap">
         <div class="flame-glow"></div>
-        <svg class="flame-svg" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
-          <path class="flame-outer" d="M32 72 C20 60 10 45 18 30 C22 22 28 18 32 10 C36 18 42 22 46 30 C54 45 44 60 32 72Z"/>
-          <path class="flame-mid"   d="M32 65 C26 55 22 44 26 34 C28 28 30 24 32 18 C34 24 36 28 38 34 C42 44 38 55 32 65Z"/>
-          <path class="flame-tip"   d="M32 40 C30 34 29 30 32 24 C35 30 34 34 32 40Z"/>
+        <svg class="flame-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- Flamme principale large -->
+          <path class="flame-outer" d="M40 95 C18 78 4 58 10 36 C14 22 22 14 28 6 C30 16 26 24 30 32 C34 20 38 8 40 0 C42 8 46 20 50 32 C54 24 50 16 52 6 C58 14 66 22 70 36 C76 58 62 78 40 95Z"/>
+          <!-- Flamme intérieure -->
+          <path class="flame-mid" d="M40 85 C26 70 18 54 22 38 C25 28 31 22 34 14 C36 22 33 30 36 38 C38 28 40 16 40 10 C40 16 42 28 44 38 C47 30 44 22 46 14 C49 22 55 28 58 38 C62 54 54 70 40 85Z"/>
+          <!-- Coeur jaune -->
+          <path class="flame-core" d="M40 72 C34 62 30 52 33 42 C35 36 38 32 40 26 C42 32 45 36 47 42 C50 52 46 62 40 72Z"/>
+          <!-- Pointe bleue -->
+          <path class="flame-tip" d="M40 40 C38 32 37 26 40 18 C43 26 42 32 40 40Z"/>
         </svg>
       </div>
-      <!-- Stats carousel -->
       <div class="flame-stats" id="flame-stats">
         <div class="flame-stat-slide active" data-slide="0">
           <div class="flame-stat-label">Série active</div>
@@ -1770,7 +1931,7 @@
         <div class="flame-stat-slide" data-slide="4">
           <div class="flame-stat-label">Niveau flamme</div>
           <div class="flame-stat-value" id="flame-lvl-val">35%</div>
-          <div class="flame-stat-sub">Continue comme ça</div>
+          <div class="flame-stat-sub" id="flame-lvl-sub">Continue comme ça</div>
         </div>
         <div class="flame-dots" id="flame-dots">
           <div class="flame-dot active"></div>
@@ -1780,15 +1941,6 @@
           <div class="flame-dot"></div>
         </div>
       </div>
-    </div>
-
-    <!-- TÂCHES À VENIR (nouvelles cards premium) -->
-    <div class="dash-section-label">
-      <span>À venir</span>
-      <button class="dash-see-all" onclick="goTo('tasks')">Voir tout <i class="fa-solid fa-arrow-right"></i></button>
-    </div>
-    <div id="upcoming-wrap">
-      <div id="upcoming-tasks-list"></div>
     </div>
 
     <!-- STREAK PREMIUM -->
@@ -1816,17 +1968,21 @@
           <div class="dash-week-label">Cette semaine</div>
           <div class="dash-week-pct" id="ring-pct">0%</div>
         </div>
-        <svg width="56" height="56" viewBox="0 0 56 56">
-          <circle stroke="rgba(255,255,255,0.15)" stroke-width="5" fill="none" cx="28" cy="28" r="22"/>
-          <circle id="ring-fill" stroke="#fff" stroke-width="5" fill="none" cx="28" cy="28" r="22"
-            stroke-dasharray="138" stroke-dashoffset="138"
-            stroke-linecap="round" transform="rotate(-90 28 28)"/>
+        <svg width="60" height="60" viewBox="0 0 60 60">
+          <circle stroke="rgba(255,255,255,0.12)" stroke-width="5" fill="none" cx="30" cy="30" r="24"/>
+          <circle id="ring-fill" stroke="#fbbf24" stroke-width="5" fill="none" cx="30" cy="30" r="24"
+            stroke-dasharray="150" stroke-dashoffset="150"
+            stroke-linecap="round" transform="rotate(-90 30 30)"/>
         </svg>
       </div>
+      <div class="dash-week-motivation" id="week-motivation">Continue comme ça !</div>
       <div class="dash-bars-row">
         <div class="week-bars" id="week-bars"></div>
       </div>
     </div>
+
+    <!-- ACTIVITÉ — mini courbe carousel -->
+    <div id="activity-dashboard-wrap" style="display:none;"></div>
 
   </div>
 
@@ -1835,6 +1991,7 @@
     <div class="section-title-row">
       <div class="section-title">Mes tâches</div>
       <div style="display:flex;gap:8px;">
+        <button class="advanced-filter-btn" id="activity-btn" onclick="goToActivity()" title="Activité"><i class="fa-solid fa-chart-line"></i></button>
         <button class="advanced-filter-btn" id="memos-btn" onclick="goToMemos()" title="Mémos"><i class="fa-solid fa-note-sticky"></i></button>
         <button class="advanced-filter-btn" id="view-toggle-btn" onclick="toggleTaskView()" title="Vue Kanban"><i class="fa-solid fa-table-columns"></i></button>
         <button class="advanced-filter-btn" id="advanced-filter-btn" onclick="toggleAdvancedFilters()"><i class="fa-solid fa-sliders"></i></button>
@@ -1865,6 +2022,34 @@
 
     <div id="task-list"></div>
     <div id="kanban-board" style="display:none;"></div>
+  </div>
+
+  <!-- SCREEN MÉMOS -->
+  <!-- SCREEN ACTIVITÉ -->
+  <div class="screen" id="screen-activity">
+    <div class="section-title-row" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-bottom:8px;">
+      <div class="section-title-row-left">
+        <button class="advanced-filter-btn" onclick="goTo('tasks')" title="Retour"><i class="fa-solid fa-arrow-left"></i></button>
+        <div class="section-title">Activité</div>
+      </div>
+      <button class="advanced-filter-btn" onclick="openActivityEntry()" title="Saisir aujourd'hui"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <!-- Message si aucune activité configurée -->
+    <div id="activity-empty-state" style="display:none;text-align:center;padding:40px 20px;color:var(--text3);">
+      <i class="fa-solid fa-chart-line" style="font-size:40px;margin-bottom:12px;opacity:0.3;"></i>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Aucune activité configurée</div>
+      <div style="font-size:12px;">Va dans Paramètres → Activité pour choisir ton profil.</div>
+    </div>
+
+    <!-- Saisie du jour -->
+    <div id="activity-entry-wrap" style="display:none;"></div>
+
+    <!-- Courbes de progression -->
+    <div id="activity-charts-wrap"></div>
+
+    <!-- Message de motivation -->
+    <div id="activity-motivation" style="display:none;margin-top:16px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:16px;font-size:13px;color:var(--text);line-height:1.6;font-style:italic;"></div>
   </div>
 
   <!-- SCREEN MÉMOS -->
@@ -2355,6 +2540,32 @@
   </div>
 </div>
 
+<!-- MODAL PARAMÈTRES ACTIVITÉ -->
+<div class="modal-overlay" id="activity-settings-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-chart-line"></i> Mon activité</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">Sélectionne les profils qui te correspondent. Tu peux en avoir plusieurs.</div>
+    <div class="activity-profile-grid" id="activity-profile-chips"></div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-primary" style="flex:1;padding:14px;" onclick="closeModal('activity-settings-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SAISIE ACTIVITÉ -->
+<div class="modal-overlay" id="activity-entry-modal">
+  <div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-chart-line"></i> Saisie du jour</div>
+    <div id="activity-entry-fields"></div>
+    <button class="activity-save-btn" onclick="saveActivityEntry()">Enregistrer</button>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn-secondary" style="flex:1;" onclick="closeModal('activity-entry-modal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DÉCONNEXION -->
 <div class="modal-overlay" id="logout-modal">
   <div class="modal">
@@ -2444,6 +2655,26 @@
         <button class="theme-opt active" id="theme-dark-btn" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Sombre</button>
         <button class="theme-opt" id="theme-light-btn" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i> Clair</button>
       </div>
+      <!-- Thèmes premium -->
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:700;margin-bottom:10px;">Thèmes premium</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div id="theme-cosmos-wrap" onclick="tryUnlockTheme('cosmos')">
+            <button class="theme-opt" id="theme-cosmos-btn" style="width:100%;justify-content:flex-start;gap:10px;padding:12px 14px;">
+              <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);flex-shrink:0;"></span>
+              Cosmos
+              <span id="cosmos-lock" style="margin-left:auto;font-size:11px;color:var(--text3);"><i class="fa-solid fa-lock"></i> Semaine parfaite</span>
+            </button>
+          </div>
+          <div id="theme-sunrise-wrap" onclick="tryUnlockTheme('sunrise')">
+            <button class="theme-opt" id="theme-sunrise-btn" style="width:100%;justify-content:flex-start;gap:10px;padding:12px 14px;">
+              <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ea580c,#fbbf24);flex-shrink:0;"></span>
+              Soleil Levant
+              <span id="sunrise-lock" style="margin-left:auto;font-size:11px;color:var(--text3);"><i class="fa-solid fa-lock"></i> Mois parfait</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card" style="padding:14px;margin-bottom:10px;">
@@ -2490,6 +2721,14 @@
     <div class="settings-item" onclick="openEditPassword()">
       <div class="settings-item-icon" style="background:#f9731622;"><i class="fa-solid fa-key"></i></div>
       <div class="settings-item-text"><div class="settings-item-label">Changer le mot de passe</div></div>
+      <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+    <div class="settings-item" onclick="openActivitySettings()">
+      <div class="settings-item-icon" style="background:#22c55e22;"><i class="fa-solid fa-chart-line"></i></div>
+      <div class="settings-item-text">
+        <div class="settings-item-label">Mon activité</div>
+        <div class="settings-item-sub" id="activity-profiles-summary">Non configuré</div>
+      </div>
       <div class="settings-item-right"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
     <div class="settings-item" onclick="openDeleteAccountModal()">
@@ -2687,6 +2926,8 @@
      s'exécutent après le pont Firebase ET dans l'ordre où ils apparaissent ici -->
 <script defer src="core.js"></script>
 <script defer src="sync.js"></script>
+<script defer src="activity.js"></script>
+<script defer src="motivation.js"></script>
 <script defer src="dashboard.js"></script>
 <script defer src="tasks.js"></script>
 <script defer src="memos.js"></script>

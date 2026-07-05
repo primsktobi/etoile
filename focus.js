@@ -47,6 +47,8 @@ window.startFocusForTask = (taskId) => {
     paused: false, tickInterval: null,
     awayCount: 0, awaySince: null, awayTimer: null,
     secondsSpentTotal: 0,
+    tickStartTime: Date.now(),
+    tickStartSecondsLeft: cycles[0].durationSec,
   };
   goTo('dashboard');
   document.getElementById('focus-card').style.display = 'flex';
@@ -134,10 +136,26 @@ window.toggleConcentrationCategory = (key) => {
 
 function startFocusTick() {
   clearInterval(focusState.tickInterval);
+  // Sauvegarder l'heure de départ pour recalculer correctement
+  // même si l'app part en arrière-plan (PWA/iOS tue setInterval)
+  if (!focusState.tickStartTime) focusState.tickStartTime = Date.now();
+  if (!focusState.tickStartSecondsLeft) focusState.tickStartSecondsLeft = focusState.secondsLeft;
+
   focusState.tickInterval = setInterval(() => {
     if (focusState.paused || !focusState.active) return;
-    focusState.secondsLeft--;
-    if (focusState.cycles[focusState.cycleIndex].type === 'work') focusState.secondsSpentTotal++;
+
+    // Calcul basé sur l'heure réelle du téléphone — résiste à la mise en arrière-plan
+    const elapsed = Math.floor((Date.now() - focusState.tickStartTime) / 1000);
+    const newSecondsLeft = Math.max(0, focusState.tickStartSecondsLeft - elapsed);
+
+    if (newSecondsLeft !== focusState.secondsLeft) {
+      const delta = focusState.secondsLeft - newSecondsLeft;
+      if (focusState.cycles[focusState.cycleIndex].type === 'work') {
+        focusState.secondsSpentTotal += delta;
+      }
+      focusState.secondsLeft = newSecondsLeft;
+    }
+
     if (focusState.secondsLeft <= 0) {
       advanceFocusCycle();
     } else {
@@ -154,12 +172,15 @@ function advanceFocusCycle() {
   }
   const cycle = focusState.cycles[focusState.cycleIndex];
   focusState.secondsLeft = cycle.durationSec;
+  // Réinitialiser la référence temps pour le nouveau cycle
+  focusState.tickStartTime = Date.now();
+  focusState.tickStartSecondsLeft = cycle.durationSec;
   if (cycle.type === 'break') {
-    showToast('☕ Pause ! 5 minutes');
-    sendLocalNotif('☕ Pause méritée', `Petite pause de ${POMODORO_BREAK_MIN} min avant de reprendre`);
+    showToast('Pause ! 5 minutes');
+    sendLocalNotif('Pause méritée', `Petite pause de ${POMODORO_BREAK_MIN} min avant de reprendre`);
   } else {
-    showToast('🎯 Reprise du focus');
-    sendLocalNotif('🎯 Retour au travail', focusState.taskTitle);
+    showToast('Reprise du focus');
+    sendLocalNotif('Retour au travail', focusState.taskTitle);
   }
   renderFocusUI();
 }
@@ -234,6 +255,12 @@ function restoreNormalTopbar() {
 
 window.focusPauseResume = () => {
   focusState.paused = !focusState.paused;
+  if (!focusState.paused) {
+    // À la reprise — réinitialiser la référence temps pour que le calcul
+    // basé sur Date.now() soit correct depuis ce moment
+    focusState.tickStartTime = Date.now();
+    focusState.tickStartSecondsLeft = focusState.secondsLeft;
+  }
   renderFocusUI();
 };
 

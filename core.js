@@ -257,6 +257,8 @@ function runBoot() {
       setTimeout(maybeShowMotivationQuote, 600);
       // Flamme vivante — charger le score et vérifier la décroissance journalière
       if (typeof loadFlameScore === 'function') { loadFlameScore(); checkFlameDailyDecay(); }
+      if (typeof loadActivityData === 'function') loadActivityData();
+      if (typeof loadMotivationState === 'function') loadMotivationState();
     } else {
       currentUser = null;
       resetMotivationForNewSession();
@@ -312,6 +314,8 @@ function setTheme(t, save = true) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('theme-dark-btn')?.classList.toggle('active', t === 'dark');
   document.getElementById('theme-light-btn')?.classList.toggle('active', t === 'light');
+  document.getElementById('theme-cosmos-btn')?.classList.toggle('active', t === 'cosmos');
+  document.getElementById('theme-sunrise-btn')?.classList.toggle('active', t === 'sunrise');
   if (save) savePref('theme', t);
 }
 function toggleTheme() {
