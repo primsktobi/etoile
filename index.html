@@ -2150,33 +2150,101 @@
 
   <!-- SCREEN ÉTUDIANT -->
   <div class="screen" id="screen-student">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="font-size:18px;font-weight:900;color:var(--text);">🎓 Programme</div>
-      <div style="display:flex;gap:8px;">
-        <button class="advanced-filter-btn" onclick="openStudentSettings()" title="Paramètres"><i class="fa-solid fa-gear"></i></button>
-        <button class="advanced-filter-btn" onclick="generateStudyPlan()" title="Régénérer le programme"><i class="fa-solid fa-rotate"></i></button>
+    <!-- Onglets -->
+    <div style="display:flex;gap:0;margin-bottom:16px;background:var(--bg3);border-radius:14px;padding:3px;">
+      <button class="student-tab-btn active" data-tab="schedule" onclick="switchStudentTab('schedule')"
+        style="flex:1;padding:9px;border-radius:11px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--card);color:var(--text);transition:all 0.2s;">
+        <i class="fa-solid fa-calendar-week"></i> Programme
+      </button>
+      <button class="student-tab-btn" data-tab="subjects" onclick="switchStudentTab('subjects')"
+        style="flex:1;padding:9px;border-radius:11px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text3);transition:all 0.2s;">
+        <i class="fa-solid fa-book-open"></i> Matières
+      </button>
+    </div>
+
+    <!-- Vue Programme -->
+    <div id="student-schedule-view">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:900;color:var(--text);">Semaine</div>
+        <div style="display:flex;gap:8px;">
+          <button class="advanced-filter-btn" onclick="openStudentSettings()" title="Paramètres"><i class="fa-solid fa-gear"></i></button>
+          <button class="advanced-filter-btn" onclick="generateStudyPlan()" title="Générer les tâches d'étude"><i class="fa-solid fa-rotate"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;" id="student-legend">
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
+          <div style="width:10px;height:10px;border-radius:2px;border-left:3px solid #fbbf24;background:rgba(255,255,255,0.1);"></div> Important
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
+          <div style="width:10px;height:10px;border-radius:2px;border-left:3px solid #94a3b8;background:rgba(255,255,255,0.1);opacity:0.9;"></div> Moyen
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
+          <div style="width:10px;height:10px;border-radius:2px;background:linear-gradient(135deg,#1d4ed8,#1e40af);border-left:3px solid #60a5fa;"></div> Étude
+        </div>
+      </div>
+      <div style="position:relative;">
+        <div style="position:absolute;left:0;top:40px;width:28px;z-index:3;" id="student-hour-labels"></div>
+        <div class="student-schedule" id="student-schedule" style="margin-left:28px;"></div>
       </div>
     </div>
 
-    <!-- Légende -->
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;" id="student-legend">
-      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
-        <div style="width:10px;height:10px;border-radius:2px;border-left:3px solid #fbbf24;background:rgba(255,255,255,0.1);"></div> Important
+    <!-- Vue Matières -->
+    <div id="student-subjects-view" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:16px;font-weight:900;color:var(--text);">Mes matières</div>
+        <button class="btn-primary" style="padding:8px 16px;border-radius:12px;font-size:13px;" onclick="openAddSubjectModal()">
+          <i class="fa-solid fa-plus"></i> Ajouter
+        </button>
       </div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
-        <div style="width:10px;height:10px;border-radius:2px;border-left:3px solid #94a3b8;background:rgba(255,255,255,0.1);opacity:0.9;"></div> Moyen
-      </div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
-        <div style="width:10px;height:10px;border-radius:2px;background:linear-gradient(135deg,#1d4ed8,#1e40af);border-left:3px solid #60a5fa;"></div> Étude
-      </div>
+      <div id="student-subjects-list"></div>
     </div>
+  </div>
 
-    <!-- Programme 7 jours scrollable -->
-    <div style="position:relative;">
-      <!-- Heures à gauche -->
-      <div style="position:absolute;left:0;top:40px;width:28px;z-index:3;" id="student-hour-labels"></div>
-      <!-- Colonnes jours -->
-      <div class="student-schedule" id="student-schedule" style="margin-left:28px;"></div>
+  <!-- MODAL MATIÈRE -->
+  <div class="modal-overlay" id="subject-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="subject-modal-title">Nouvelle matière</div>
+      <div class="field-label">Nom de la matière</div>
+      <input class="field-input" id="subject-name-input" placeholder="Ex: Mathématiques" maxlength="40" />
+      <div class="field-label" style="margin-top:14px;">Couleur</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+        <input type="hidden" id="selected-subject-color" value="#2563eb" />
+        <div class="subject-color-chip" data-color="#2563eb" onclick="selectSubjectColor('#2563eb')" style="width:32px;height:32px;border-radius:50%;background:#2563eb;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#dc2626" onclick="selectSubjectColor('#dc2626')" style="width:32px;height:32px;border-radius:50%;background:#dc2626;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#16a34a" onclick="selectSubjectColor('#16a34a')" style="width:32px;height:32px;border-radius:50%;background:#16a34a;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#f97316" onclick="selectSubjectColor('#f97316')" style="width:32px;height:32px;border-radius:50%;background:#f97316;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#a855f7" onclick="selectSubjectColor('#a855f7')" style="width:32px;height:32px;border-radius:50%;background:#a855f7;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#0ea5e9" onclick="selectSubjectColor('#0ea5e9')" style="width:32px;height:32px;border-radius:50%;background:#0ea5e9;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#db2777" onclick="selectSubjectColor('#db2777')" style="width:32px;height:32px;border-radius:50%;background:#db2777;cursor:pointer;"></div>
+        <div class="subject-color-chip" data-color="#65a30d" onclick="selectSubjectColor('#65a30d')" style="width:32px;height:32px;border-radius:50%;background:#65a30d;cursor:pointer;"></div>
+      </div>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn-secondary" onclick="closeModal('subject-modal')">Annuler</button>
+        <button class="btn-primary" style="flex:2;" onclick="saveSubject()">Enregistrer</button>
+      </div>
+      <button id="subject-delete-btn" class="btn-danger" style="width:100%;margin-top:8px;display:none;" onclick="deleteSubject()">Supprimer cette matière</button>
+    </div>
+  </div>
+
+  <!-- MODAL CHAPITRES D'UNE MATIÈRE -->
+  <div class="modal-overlay" id="subject-detail-modal">
+    <div class="modal" style="max-height:85vh;overflow-y:auto;">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="subject-detail-title">Chapitres</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">Appuie sur un chapitre pour changer son statut.</div>
+      <div id="subject-chapters-list"></div>
+      <!-- Ajout chapitre -->
+      <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+        <input class="field-input" id="new-chapter-input" placeholder="Nom du chapitre" maxlength="60"
+          style="flex:1;" onkeydown="if(event.key==='Enter') addChapterToSubject();" />
+        <button class="btn-primary" style="padding:10px 14px;border-radius:12px;font-size:13px;white-space:nowrap;" onclick="addChapterToSubject()">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="btn-primary" style="flex:1;padding:14px;" onclick="closeModal('subject-detail-modal')">Fermer</button>
+      </div>
     </div>
   </div>
 
