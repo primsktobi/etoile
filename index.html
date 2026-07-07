@@ -1480,28 +1480,27 @@
     .flame-svg { width: 100%; height: 100%; }
 
     @keyframes flameWave {
-      0%,100% { transform: scaleX(1) skewX(0deg); }
-      25%      { transform: scaleX(1.04) skewX(1.5deg); }
-      75%      { transform: scaleX(0.97) skewX(-1.5deg); }
+      0%,100% { transform: scaleX(1); }
+      25%      { transform: scaleX(1.04); }
+      75%      { transform: scaleX(0.97); }
     }
     @keyframes flamePulse {
-      0%,100% { opacity: 1; transform: scaleY(1); }
-      50%      { opacity: 0.88; transform: scaleY(0.96); }
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.85; }
     }
     @keyframes flameTipDance {
-      0%,100% { opacity: 0.85; transform: translateY(0) scaleX(1); }
-      33%      { opacity: 1;    transform: translateY(-2px) scaleX(0.9); }
-      66%      { opacity: 0.7;  transform: translateY(1px) scaleX(1.1); }
+      0%,100% { opacity: 0.9; }
+      50%      { opacity: 0.6; }
     }
     @keyframes flameGlow {
       0%,100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
       50%      { opacity: 0.9; transform: translateX(-50%) scale(1.15); }
     }
 
-    .flame-outer { fill: #dc2626; animation: flameWave 2.2s ease-in-out infinite; transform-origin: 50% 90%; }
-    .flame-mid   { fill: #f97316; animation: flamePulse 1.8s ease-in-out infinite 0.15s; transform-origin: 50% 85%; }
-    .flame-core  { fill: #fbbf24; animation: flamePulse 1.5s ease-in-out infinite 0.3s; transform-origin: 50% 80%; }
-    .flame-tip   { fill: #93c5fd; animation: flameTipDance 1.3s ease-in-out infinite; transform-origin: 50% 50%; }
+    .flame-outer { fill: #dc2626; animation: flameWave 2.2s ease-in-out infinite; }
+    .flame-mid   { fill: #f97316; animation: flamePulse 1.8s ease-in-out infinite 0.15s; }
+    .flame-core  { fill: #fbbf24; animation: flamePulse 1.5s ease-in-out infinite 0.3s; }
+    .flame-tip   { fill: #93c5fd; animation: flameTipDance 1.3s ease-in-out infinite; }
     .flame-glow  {
       position: absolute; bottom: 2px; left: 50%;
       transform: translateX(-50%);
@@ -1536,6 +1535,59 @@
     @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
     @keyframes scaleIn { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
     .dash-streak-row, .dash-streak-fire, .dash-streak-text, .dash-streak-bar-wrap { display: none !important; }
+
+    /* ── MODULE ÉTUDIANT ─────────────────────────────────────── */
+    .student-schedule { display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;padding-bottom:8px; }
+    .student-day-col { min-width:calc(25vw - 10px);max-width:100px;flex-shrink:0;scroll-snap-align:start;border-right:1px solid var(--border); }
+    .student-day-col:last-child { border-right:none; }
+    .student-day-header { text-align:center;padding:8px 4px;position:sticky;top:0;background:var(--bg);z-index:2;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border); }
+    .student-day-header.today { color:var(--accent); }
+    .student-timeline { position:relative;min-height:600px; }
+    .student-hour-line { position:absolute;left:0;right:0;height:1px;background:var(--border);opacity:0.4; }
+    .student-hour-label { position:absolute;left:2px;font-size:8px;color:var(--text3);transform:translateY(-50%); }
+    .student-block { position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 5px;font-size:10px;font-weight:700;color:#fff;overflow:hidden;cursor:pointer;transition:opacity 0.2s; }
+    .student-block .block-title { font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .student-block .block-time  { font-size:9px;opacity:0.85; }
+    .student-block.study { background:linear-gradient(135deg,#1d4ed8,#1e40af);border-left:3px solid #60a5fa; }
+    .student-block.imp-high   { border-left:3px solid #fbbf24; }
+    .student-block.imp-medium { border-left:3px solid #94a3b8;opacity:0.9; }
+    .student-block.imp-other  { opacity:0.65; }
+
+    /* Onboarding étudiant */
+    .student-onboarding { position:fixed;inset:0;z-index:800;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px; }
+    .onboarding-step { display:none;text-align:center;animation:fadeSlideUp 0.5s ease; width:100%;max-width:360px; }
+    .onboarding-step.active { display:block; }
+    @keyframes fadeSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .onboarding-emoji { font-size:52px;margin-bottom:16px; }
+    .onboarding-title { font-size:22px;font-weight:900;color:var(--text);margin-bottom:8px;line-height:1.2; }
+    .onboarding-sub   { font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:28px; }
+    .onboarding-options { display:flex;flex-direction:column;gap:12px;width:100%; }
+    .onboarding-option { padding:14px 18px;border-radius:16px;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;text-align:left; }
+    .onboarding-option.selected { border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--card)); }
+    .onboarding-input { width:100%;padding:14px 16px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:20px;font-weight:700;text-align:center;outline:none;box-sizing:border-box; }
+    .onboarding-input:focus { border-color:var(--accent); }
+    .onboarding-next { width:100%;padding:16px;border-radius:16px;background:var(--accent);color:#fff;font-size:16px;font-weight:800;border:none;cursor:pointer;margin-top:16px; }
+    .onboarding-progress { display:flex;gap:6px;margin-bottom:32px; }
+    .onboarding-dot { width:6px;height:6px;border-radius:50%;background:var(--border);transition:background 0.3s,transform 0.3s; }
+    .onboarding-dot.done { background:var(--accent);transform:scale(1.2); }
+
+    /* Paramètres étudiant — slide depuis droite, invisible hors viewport */
+    .student-settings-panel {
+      position:fixed;top:0;right:0;bottom:0;width:100%;max-width:480px;
+      background:var(--bg);z-index:700;overflow-y:auto;padding:24px 20px;
+      transform:translateX(110%); /* hors écran = invisible même sur grand écran */
+      transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      visibility:hidden;
+    }
+    .student-settings-panel.open { transform:translateX(0);visibility:visible; }
+
+    /* Chips importance cours */
+    .course-importance-grid { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
+    .course-imp-chip { padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600;border:2px solid var(--border);color:var(--text2);cursor:pointer;transition:all 0.2s; }
+    .course-imp-chip.selected { color:#fff;border-color:transparent; }
+    .course-imp-chip[data-imp="high"].selected   { background:#dc2626; }
+    .course-imp-chip[data-imp="medium"].selected { background:#f97316; }
+    .course-imp-chip[data-imp="other"].selected  { background:#64748b; }
 
     /* ── MODULE ACTIVITÉ ─────────────────────────────────────── */
     .activity-card {
@@ -1991,6 +2043,7 @@
     <div class="section-title-row">
       <div class="section-title">Mes tâches</div>
       <div style="display:flex;gap:8px;">
+        <button class="advanced-filter-btn" id="student-btn" onclick="goToStudent()" title="Étudiant"><i class="fa-solid fa-graduation-cap"></i></button>
         <button class="advanced-filter-btn" id="activity-btn" onclick="goToActivity()" title="Activité"><i class="fa-solid fa-chart-line"></i></button>
         <button class="advanced-filter-btn" id="memos-btn" onclick="goToMemos()" title="Mémos"><i class="fa-solid fa-note-sticky"></i></button>
         <button class="advanced-filter-btn" id="view-toggle-btn" onclick="toggleTaskView()" title="Vue Kanban"><i class="fa-solid fa-table-columns"></i></button>
@@ -2025,6 +2078,108 @@
   </div>
 
   <!-- SCREEN MÉMOS -->
+  <!-- ONBOARDING ÉTUDIANT (première ouverture) -->
+  <div class="student-onboarding" id="student-onboarding" style="display:none;">
+    <div class="onboarding-progress" id="onboarding-progress"></div>
+    <div id="onboarding-steps-wrap" style="width:100%;max-width:360px;"></div>
+  </div>
+
+  <!-- PARAMÈTRES ÉTUDIANT (slide depuis droite) -->
+  <div class="student-settings-panel" id="student-settings-panel">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <button class="advanced-filter-btn" onclick="closeStudentSettings()"><i class="fa-solid fa-arrow-left"></i></button>
+      <div style="font-size:18px;font-weight:900;color:var(--text);">Paramètres étudiant</div>
+    </div>
+    <div id="student-settings-content"></div>
+  </div>
+
+  <!-- MODAL AJOUT / MODIFICATION COURS -->
+  <div class="modal-overlay" id="student-course-modal">
+    <div class="modal" style="max-height:85vh;overflow-y:auto;">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="course-modal-title">Ajouter un cours</div>
+
+      <div class="field-label">Type</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="onboarding-option" id="course-type-cours" style="flex:1;padding:10px;" onclick="selectCourseType('cours')">Cours</button>
+        <button class="onboarding-option" id="course-type-autre" style="flex:1;padding:10px;" onclick="selectCourseType('autre')">Autre</button>
+      </div>
+
+      <div id="course-importance-wrap">
+        <div class="field-label">Importance de la matière cette semaine</div>
+        <div class="course-importance-grid">
+          <div class="course-imp-chip" data-imp="high"   onclick="selectCourseImp('high',this)">⭐ Importante</div>
+          <div class="course-imp-chip" data-imp="medium" onclick="selectCourseImp('medium',this)">Moyenne</div>
+          <div class="course-imp-chip" data-imp="other"  onclick="selectCourseImp('other',this)">Autre</div>
+        </div>
+      </div>
+
+      <div class="field-label" style="margin-top:14px;">Nom</div>
+      <input class="field-input" id="course-name-input" placeholder="Ex: Mathématiques" maxlength="40" />
+
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <div style="flex:1;">
+          <div class="field-label">Début</div>
+          <input class="field-input" type="time" id="course-start-input" />
+        </div>
+        <div style="flex:1;">
+          <div class="field-label">Fin</div>
+          <input class="field-input" type="time" id="course-end-input" />
+        </div>
+      </div>
+
+      <div id="course-color-wrap" style="margin-top:12px;">
+        <div class="field-label">Couleur (optionnel)</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;" id="course-color-picker">
+          <div class="color-dot" data-color="#2563eb" onclick="selectCourseColor('#2563eb',this)" style="background:#2563eb;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
+          <div class="color-dot" data-color="#dc2626" onclick="selectCourseColor('#dc2626',this)" style="background:#dc2626;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
+          <div class="color-dot" data-color="#16a34a" onclick="selectCourseColor('#16a34a',this)" style="background:#16a34a;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
+          <div class="color-dot" data-color="#f97316" onclick="selectCourseColor('#f97316',this)" style="background:#f97316;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
+          <div class="color-dot" data-color="#a855f7" onclick="selectCourseColor('#a855f7',this)" style="background:#a855f7;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
+          <div class="color-dot" data-color="#0ea5e9" onclick="selectCourseColor('#0ea5e9',this)" style="background:#0ea5e9;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn-secondary" onclick="closeModal('student-course-modal')">Annuler</button>
+        <button class="btn-primary" style="flex:2;" onclick="saveCourseBlock()">Enregistrer</button>
+      </div>
+      <button id="course-delete-btn" class="btn-danger" style="width:100%;margin-top:8px;display:none;" onclick="deleteCourseBlock()">Supprimer ce cours</button>
+    </div>
+  </div>
+
+  <!-- SCREEN ÉTUDIANT -->
+  <div class="screen" id="screen-student">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:18px;font-weight:900;color:var(--text);">🎓 Programme</div>
+      <div style="display:flex;gap:8px;">
+        <button class="advanced-filter-btn" onclick="openStudentSettings()" title="Paramètres"><i class="fa-solid fa-gear"></i></button>
+        <button class="advanced-filter-btn" onclick="generateStudyPlan()" title="Régénérer le programme"><i class="fa-solid fa-rotate"></i></button>
+      </div>
+    </div>
+
+    <!-- Légende -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;" id="student-legend">
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
+        <div style="width:10px;height:10px;border-radius:2px;border-left:3px solid #fbbf24;background:rgba(255,255,255,0.1);"></div> Important
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
+        <div style="width:10px;height:10px;border-radius:2px;border-left:3px solid #94a3b8;background:rgba(255,255,255,0.1);opacity:0.9;"></div> Moyen
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);">
+        <div style="width:10px;height:10px;border-radius:2px;background:linear-gradient(135deg,#1d4ed8,#1e40af);border-left:3px solid #60a5fa;"></div> Étude
+      </div>
+    </div>
+
+    <!-- Programme 7 jours scrollable -->
+    <div style="position:relative;">
+      <!-- Heures à gauche -->
+      <div style="position:absolute;left:0;top:40px;width:28px;z-index:3;" id="student-hour-labels"></div>
+      <!-- Colonnes jours -->
+      <div class="student-schedule" id="student-schedule" style="margin-left:28px;"></div>
+    </div>
+  </div>
+
   <!-- SCREEN ACTIVITÉ -->
   <div class="screen" id="screen-activity">
     <div class="section-title-row" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-bottom:8px;">
@@ -2928,6 +3083,7 @@
 <script defer src="sync.js"></script>
 <script defer src="activity.js"></script>
 <script defer src="motivation.js"></script>
+<script defer src="student.js"></script>
 <script defer src="dashboard.js"></script>
 <script defer src="tasks.js"></script>
 <script defer src="memos.js"></script>
