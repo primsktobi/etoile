@@ -148,13 +148,43 @@ function renderFlame() {
   const wrap = document.getElementById('flame-wrap');
   if (!card || !wrap) return;
 
-  // Taille de la flamme (5 niveaux)
-  wrap.className = 'flame-wrap';
-  if (flameScore >= 85)      { wrap.classList.add('sz5', 'clr-purple'); card.className = 'flame-card heat-max'; }
-  else if (flameScore >= 65) { wrap.classList.add('sz4', 'clr-red');    card.className = 'flame-card heat-high'; }
-  else if (flameScore >= 50) { wrap.classList.add('sz3', 'clr-orange'); card.className = 'flame-card heat-mid'; }
-  else if (flameScore >= 35) { wrap.classList.add('sz2', 'clr-orange'); card.className = 'flame-card heat-low'; }
-  else                        { wrap.classList.add('sz1', 'clr-cold');  card.className = 'flame-card'; }
+  // Couleurs selon niveau — appliquées directement sur les attributs fill SVG
+  // pour garantir l'affichage sur tous les navigateurs et OS
+  let colors = { outer:'#dc2626', mid:'#f97316', core:'#fbbf24', tip:'#93c5fd',
+                 glow:'rgba(249,115,22,0.6)' };
+  let szClass = 'sz2'; let heatClass = 'heat-low';
+
+  if (flameScore >= 85) {
+    colors = { outer:'#7e22ce', mid:'#a855f7', core:'#c084fc', tip:'#67e8f9', glow:'rgba(168,85,247,0.6)' };
+    szClass = 'sz5'; heatClass = 'heat-max';
+  } else if (flameScore >= 65) {
+    colors = { outer:'#991b1b', mid:'#ef4444', core:'#f97316', tip:'#60a5fa', glow:'rgba(239,68,68,0.6)' };
+    szClass = 'sz4'; heatClass = 'heat-high';
+  } else if (flameScore >= 50) {
+    colors = { outer:'#dc2626', mid:'#f97316', core:'#fbbf24', tip:'#93c5fd', glow:'rgba(249,115,22,0.6)' };
+    szClass = 'sz3'; heatClass = 'heat-mid';
+  } else if (flameScore >= 35) {
+    colors = { outer:'#dc2626', mid:'#f97316', core:'#fbbf24', tip:'#93c5fd', glow:'rgba(249,115,22,0.6)' };
+    szClass = 'sz2'; heatClass = 'heat-low';
+  } else {
+    colors = { outer:'#64748b', mid:'#94a3b8', core:'#cbd5e1', tip:'#e2e8f0', glow:'rgba(100,116,139,0.5)' };
+    szClass = 'sz1'; heatClass = '';
+  }
+
+  wrap.className = `flame-wrap ${szClass}`;
+  card.className = `flame-card ${heatClass}`.trim();
+
+  // Appliquer les couleurs directement sur les paths SVG
+  const outer = wrap.querySelector('.flame-outer');
+  const mid   = wrap.querySelector('.flame-mid');
+  const core  = wrap.querySelector('.flame-core');
+  const tip   = wrap.querySelector('.flame-tip');
+  const glow  = wrap.querySelector('.flame-glow');
+  if (outer) outer.setAttribute('fill', colors.outer);
+  if (mid)   mid.setAttribute('fill', colors.mid);
+  if (core)  core.setAttribute('fill', colors.core);
+  if (tip)   tip.setAttribute('fill', colors.tip);
+  if (glow)  glow.style.background = `radial-gradient(ellipse, ${colors.glow} 0%, transparent 70%)`;
 
   // Stats
   const today = fmtDate(new Date());
@@ -167,7 +197,6 @@ function renderFlame() {
   const weekDone   = tasks.filter(t => { if (!t.date) return false; const d = new Date(t.date); return d >= weekStart && d < weekEnd && t.status === 'done'; }).length;
   const pctToday   = todayTotal > 0 ? Math.round(todayDone / todayTotal * 100) : 0;
 
-  // Streak
   const doneDates = new Set(tasks.filter(t => t.status === 'done' && t.date).map(t => t.date));
   let streak = 0; let cursor = new Date();
   if (!doneDates.has(fmtDate(cursor))) cursor.setDate(cursor.getDate() - 1);
@@ -184,7 +213,6 @@ function renderFlame() {
   setText('flame-pct-sub', todayTotal > 0 ? `sur ${todayTotal} tâche${todayTotal > 1 ? 's' : ''} du jour` : 'aucune tâche planifiée');
   setText('flame-lvl-val', flameScore + '%');
 
-  // Lancer carousel si pas déjà actif
   if (!flameCarouselTimer) startFlameCarousel();
 }
 
