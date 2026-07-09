@@ -456,7 +456,6 @@ window.openAddCourseModal = (dayKey, defaultStart='08:00') => {
   selectedCourseColor = studentSubjects[0]?.color || '#2563eb';
 
   document.getElementById('course-modal-title').textContent = `Ajouter — ${DAYS_FR[DAYS_EN.indexOf(dayKey)]}`;
-  document.getElementById('course-name-input').value        = '';
   document.getElementById('course-start-input').value       = defaultStart;
   document.getElementById('course-end-input').value         = addMinutes(defaultStart,60);
   document.getElementById('course-delete-btn').style.display = 'none';
@@ -475,12 +474,15 @@ window.openEditCourseModal = (dayKey, courseId) => {
   selectedCourseColor = course.color||'#2563eb';
 
   document.getElementById('course-modal-title').textContent  = `Modifier — ${DAYS_FR[DAYS_EN.indexOf(dayKey)]}`;
-  document.getElementById('course-name-input').value         = course.type==='cours'||course.type==='revision' ? '' : course.name;
   document.getElementById('course-start-input').value        = course.start;
   document.getElementById('course-end-input').value          = course.end;
   document.getElementById('course-delete-btn').style.display = 'block';
   selectCourseType(course.type);
   _renderSubjectPicker(course.subjectId||null);
+  if (course.type!=='cours' && course.type!=='revision') {
+    const nameInput = document.getElementById('course-name-input');
+    if (nameInput) nameInput.value = course.name;
+  }
   document.querySelectorAll('.course-imp-chip').forEach(c => c.classList.toggle('selected', c.dataset.imp===selectedCourseImp));
   document.getElementById('student-course-modal').classList.add('open');
 };
