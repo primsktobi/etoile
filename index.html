@@ -2101,23 +2101,24 @@
 
       <div class="field-label">Type</div>
       <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button class="onboarding-option" id="course-type-cours" style="flex:1;padding:10px;" onclick="selectCourseType('cours')">Cours</button>
-        <button class="onboarding-option" id="course-type-autre" style="flex:1;padding:10px;" onclick="selectCourseType('autre')">Autre</button>
+        <button class="onboarding-option selected" id="course-type-cours"    style="flex:1;padding:10px;font-size:12px;" onclick="selectCourseType('cours')">📚 Cours</button>
+        <button class="onboarding-option"          id="course-type-revision" style="flex:1;padding:10px;font-size:12px;" onclick="selectCourseType('revision')">✍️ Révision</button>
+        <button class="onboarding-option"          id="course-type-autre"    style="flex:1;padding:10px;font-size:12px;" onclick="selectCourseType('autre')">📌 Autre</button>
       </div>
 
-      <div id="course-importance-wrap">
+      <!-- Sélecteur matière ou champ texte selon le type -->
+      <div id="course-name-wrap"></div>
+
+      <div id="course-importance-wrap" style="margin-top:12px;">
         <div class="field-label">Importance de la matière cette semaine</div>
         <div class="course-importance-grid">
-          <div class="course-imp-chip" data-imp="high"   onclick="selectCourseImp('high',this)">⭐ Importante</div>
-          <div class="course-imp-chip" data-imp="medium" onclick="selectCourseImp('medium',this)">Moyenne</div>
-          <div class="course-imp-chip" data-imp="other"  onclick="selectCourseImp('other',this)">Autre</div>
+          <div class="course-imp-chip selected" data-imp="high"   onclick="selectCourseImp('high',this)">⭐ Importante</div>
+          <div class="course-imp-chip"          data-imp="medium" onclick="selectCourseImp('medium',this)">Moyenne</div>
+          <div class="course-imp-chip"          data-imp="other"  onclick="selectCourseImp('other',this)">Autre</div>
         </div>
       </div>
 
-      <div class="field-label" style="margin-top:14px;">Nom</div>
-      <input class="field-input" id="course-name-input" placeholder="Ex: Mathématiques" maxlength="40" />
-
-      <div style="display:flex;gap:10px;margin-top:12px;">
+      <div style="display:flex;gap:10px;margin-top:14px;">
         <div style="flex:1;">
           <div class="field-label">Début</div>
           <input class="field-input" type="time" id="course-start-input" />
@@ -2128,23 +2129,11 @@
         </div>
       </div>
 
-      <div id="course-color-wrap" style="margin-top:12px;">
-        <div class="field-label">Couleur (optionnel)</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;" id="course-color-picker">
-          <div class="color-dot" data-color="#2563eb" onclick="selectCourseColor('#2563eb',this)" style="background:#2563eb;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
-          <div class="color-dot" data-color="#dc2626" onclick="selectCourseColor('#dc2626',this)" style="background:#dc2626;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
-          <div class="color-dot" data-color="#16a34a" onclick="selectCourseColor('#16a34a',this)" style="background:#16a34a;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
-          <div class="color-dot" data-color="#f97316" onclick="selectCourseColor('#f97316',this)" style="background:#f97316;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
-          <div class="color-dot" data-color="#a855f7" onclick="selectCourseColor('#a855f7',this)" style="background:#a855f7;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
-          <div class="color-dot" data-color="#0ea5e9" onclick="selectCourseColor('#0ea5e9',this)" style="background:#0ea5e9;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;"></div>
-        </div>
-      </div>
-
       <div class="modal-actions" style="margin-top:20px;">
         <button class="btn-secondary" onclick="closeModal('student-course-modal')">Annuler</button>
         <button class="btn-primary" style="flex:2;" onclick="saveCourseBlock()">Enregistrer</button>
       </div>
-      <button id="course-delete-btn" class="btn-danger" style="width:100%;margin-top:8px;display:none;" onclick="deleteCourseBlock()">Supprimer ce cours</button>
+      <button id="course-delete-btn" class="btn-danger" style="width:100%;margin-top:8px;display:none;" onclick="deleteCourseBlock()">Supprimer</button>
     </div>
   </div>
 
@@ -2232,13 +2221,21 @@
     <div class="modal" style="max-height:85vh;overflow-y:auto;">
       <div class="modal-handle"></div>
       <div class="modal-title" id="subject-detail-title">Chapitres</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">Appuie sur un chapitre pour changer son statut.</div>
+
+      <!-- Statut de maîtrise de la matière -->
+      <div class="field-label" style="margin-bottom:8px;">Statut de la matière</div>
+      <div id="subject-mastery-picker" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;padding-top:12px;border-top:1px solid var(--border);">
+        Appuie sur un chapitre pour changer son statut.
+      </div>
       <div id="subject-chapters-list"></div>
+
       <!-- Ajout chapitre -->
       <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
         <input class="field-input" id="new-chapter-input" placeholder="Nom du chapitre" maxlength="60"
           style="flex:1;" onkeydown="if(event.key==='Enter') addChapterToSubject();" />
-        <button class="btn-primary" style="padding:10px 14px;border-radius:12px;font-size:13px;white-space:nowrap;" onclick="addChapterToSubject()">
+        <button class="btn-primary" style="padding:10px 14px;border-radius:12px;font-size:13px;" onclick="addChapterToSubject()">
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
