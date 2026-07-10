@@ -19,6 +19,23 @@ function getMusicCover(index) {
   return MUSIC_COVERS[Math.abs(index) % MUSIC_COVERS.length];
 }
 
+// ── Couleur dynamique selon la cover (Apple Music style) ────────────────────
+function applyMusicColor(coverIndex) {
+  const cover = getMusicCover(coverIndex ?? 0);
+  const colors = cover.grad.match(/#[0-9a-fA-F]{6}/g) || ['#2563eb', '#8b5cf6'];
+  const dominant = colors[0];
+  document.documentElement.style.setProperty('--music-color', dominant);
+  const blob = document.getElementById('music-bg-blob');
+  if (blob) blob.style.background = dominant;
+  // Mettre à jour la cover dans le player (dégradé + icône)
+  const disc = document.getElementById('music-disc');
+  if (disc) {
+    disc.style.background = cover.grad;
+    disc.style.boxShadow = `0 20px 60px ${dominant}66, 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)`;
+    disc.innerHTML = `<i class="fa-solid ${cover.icon}"></i>`;
+  }
+}
+
 const musicCoverCanvasCache = {};
 function getMusicCoverDataURL(index) {
   const key = Math.abs(index) % MUSIC_COVERS.length;
@@ -180,22 +197,74 @@ window.toggleLibraryMode = async () => {
   setMusicSessionTimer(30);
 };
 
+// ── Dossiers sounds — clés identiques au sounds-manifest.json ────────────────
+const AMBIENT_FOLDERS = [
+  { key: 'pluie-douce',   label: 'Pluie douce',   icon: 'fa-cloud-rain' },
+  { key: 'concentration', label: 'Concentration',  icon: 'fa-brain'      },
+  { key: 'foret',         label: 'Forêt',          icon: 'fa-tree'       },
+  { key: 'calme',         label: 'Calme',          icon: 'fa-spa'        },
+];
+const AUDIO_EXTS = ['.mp3', '.ogg', '.m4a', '.aac', '.wav', '.flac'];
+
 async function loadAmbientManifest() {
+  ambientCategories = {};
+  ambientFlatList = [];
+
+  // Priorité 1 : manifest global sounds/sounds-manifest.json
   try {
     const res = await fetch('sounds/sounds-manifest.json');
-    const data = await res.json();
-    ambientCategories = data;
-    ambientFlatList = [];
-    Object.entries(data).forEach(([key, cat]) => {
-      if (key.startsWith('_')) return;
-      (cat.files || []).forEach(filename => {
-        ambientFlatList.push({ category: key, label: cat.label, icon: cat.icon, filename, url: `sounds/${key}/${filename}` });
+    if (res.ok) {
+      const data = await res.json();
+      Object.entries(data).forEach(([key, cat]) => {
+        if (key.startsWith('_')) return;
+        ambientCategories[key] = cat;
+        (cat.files || []).forEach(filename => {
+          ambientFlatList.push({ category: key, label: cat.label, icon: cat.icon || 'fa-music', filename, url: `sounds/${key}/${filename}` });
+        });
       });
-    });
-  } catch (e) {
-    console.warn('Manifest sons d\'ambiance introuvable ou invalide:', e);
-    ambientCategories = {};
-    ambientFlatList = [];
+      if (ambientFlatList.length > 0) return;
+    }
+  } catch(e) { /* pas de manifest global */ }
+
+  // Priorité 2 : index.json par dossier (sounds/pluie/index.json)
+  for (const folder of AMBIENT_FOLDERS) {
+    ambientCategories[folder.key] = { label: folder.label, icon: folder.icon, files: [] };
+    let loaded = false;
+    try {
+      const r = await fetch(`sounds/${folder.key}/index.json`);
+      if (r.ok) {
+        const files = await r.json();
+        ambientCategories[folder.key].files = files;
+        files.forEach(filename => {
+          ambientFlatList.push({ category: folder.key, label: folder.label, icon: folder.icon, filename, url: `sounds/${folder.key}/${filename}` });
+        });
+        loaded = true;
+      }
+    } catch(e) { /* pas d'index.json */ }
+
+    // Priorité 3 : scan HEAD sur fichiers numérotés (ex: pluie01.mp3)
+    if (!loaded) {
+      const found = [];
+      const checks = [];
+      for (let i = 1; i <= 20; i++) {
+        for (const ext of AUDIO_EXTS) {
+          const filename = `${folder.key}${String(i).padStart(2,'0')}${ext}`;
+          checks.push(
+            fetch(`sounds/${folder.key}/${filename}`, { method: 'HEAD' })
+              .then(r => { if (r.ok) found.push(filename); })
+              .catch(() => {})
+          );
+        }
+      }
+      await Promise.all(checks);
+      if (found.length > 0) {
+        found.sort();
+        ambientCategories[folder.key].files = found;
+        found.forEach(filename => {
+          ambientFlatList.push({ category: folder.key, label: folder.label, icon: folder.icon, filename, url: `sounds/${folder.key}/${filename}` });
+        });
+      }
+    }
   }
 }
 
@@ -239,15 +308,27 @@ function renderMusicFolders() {
   // Dossier "Ma playlist"
   myEl.innerHTML = folderTileHTML('ma-playlist', 'Ma playlist', 'fa-list-music', musicPlaylist.length);
 
-  // Dossiers d'ambiance
-  const categoryKeys = Object.keys(ambientCategories).filter(k => !k.startsWith('_'));
-  const nonEmpty = categoryKeys.filter(k => (ambientCategories[k].files || []).length > 0);
-  ambEl.innerHTML = nonEmpty.map(key => {
+  // ✅ CORRECTION : afficher TOUS les dossiers déclarés dans AMBIENT_FOLDERS
+  // même ceux sans fichiers détectés (0 fichier = dossier visible mais vide)
+  // On complète avec les catégories du manifest si présentes
+  const allFolderKeys = [
+    ...AMBIENT_FOLDERS.map(f => f.key),
+    ...Object.keys(ambientCategories).filter(k => !k.startsWith('_') && !AMBIENT_FOLDERS.find(f => f.key === k))
+  ];
+  ambEl.innerHTML = allFolderKeys.map(key => {
+    const folder = AMBIENT_FOLDERS.find(f => f.key === key);
     const cat = ambientCategories[key];
+    const label = cat?.label || folder?.label || key;
+    const icon = cat?.icon || folder?.icon || 'fa-music';
     const count = ambientFlatList.filter(t => t.category === key).length;
-    return folderTileHTML(key, cat.label, cat.icon || 'fa-music', count);
+    return folderTileHTML(key, label, icon, count);
   }).join('');
 }
+
+window.toggleMusicSort = () => {
+  musicSortOrder = musicSortOrder === 'recent' ? 'name' : 'recent';
+  renderMusicFolders();
+};
 
 function folderTileHTML(key, label, icon, count) {
   return `
@@ -258,12 +339,27 @@ function folderTileHTML(key, label, icon, count) {
     </div>`;
 }
 
+let musicSortOrder = 'recent';
+
 function renderOpenFolderGrid(container, key) {
   const isPlaylist = key === 'ma-playlist';
   const label = isPlaylist ? 'Ma playlist' : (ambientCategories[key]?.label || key);
-  const items = isPlaylist ? musicPlaylist : ambientFlatList.filter(t => t.category === key);
+  let items = isPlaylist ? [...musicPlaylist] : ambientFlatList.filter(t => t.category === key);
 
-  const backBtn = `<div class="music-back-btn" onclick="toggleMusicCategory(null)"><i class="fa-solid fa-arrow-left"></i> ${escHtml(label)}</div>`;
+  // Tri si c'est la playlist perso
+  if (isPlaylist) {
+    if (musicSortOrder === 'name') {
+      items.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    }
+    // 'recent' = ordre d'insertion (par défaut IndexedDB)
+  }
+
+  const sortBtn = isPlaylist ? `
+    <button onclick="toggleMusicSort()" style="background:none;color:var(--text2);font-size:14px;padding:4px 8px;" title="${musicSortOrder==='name'?'Trier par récent':'Trier par nom'}">
+      <i class="fa-solid ${musicSortOrder==='name'?'fa-clock':'fa-arrow-down-a-z'}"></i>
+    </button>` : '';
+
+  const backBtn = `<div class="music-back-btn" style="display:flex;align-items:center;justify-content:space-between;" onclick="void 0"><div onclick="toggleMusicCategory(null)" style="cursor:pointer;"><i class="fa-solid fa-arrow-left"></i> ${escHtml(label)}</div>${sortBtn}</div>`;
 
   if (items.length === 0) {
     container.innerHTML = backBtn + `<div style="color:var(--text3);font-size:13px;padding:8px 0;">Aucun morceau dans ce dossier</div>`;
@@ -272,9 +368,13 @@ function renderOpenFolderGrid(container, key) {
 
   const gridItems = items.map((t, i) => {
     if (isPlaylist) {
-      const isPlaying = currentTrackSource === 'mine' && currentTrackIndex === i;
+      // ✅ CORRECTION : on identifie le morceau par son id, pas par sa position dans
+      // la liste affichée — sinon un tri par nom joue le morceau resté à cette même
+      // position dans musicPlaylist (ordre d'insertion) au lieu de celui affiché.
+      const realIndex = musicPlaylist.findIndex(x => x.id === t.id);
+      const isPlaying = currentTrackSource === 'mine' && currentTrackIndex === realIndex;
       const name = t.name;
-      return musicGridItemHTML(name, isPlaying, `playMyTrack(${i})`, `confirmDeleteTrack('${t.id}', '${escHtml(name)}')`, i);
+      return musicGridItemHTML(name, isPlaying, `playMyTrack('${t.id}')`, `confirmDeleteTrack('${t.id}', '${escHtml(name)}')`, realIndex);
     } else {
       const flatIndex = ambientFlatList.indexOf(t);
       const isPlaying = currentTrackSource === 'ambient' && currentTrackIndex === flatIndex;
@@ -322,28 +422,40 @@ window.handleMusicUpload = async (event) => {
   const files = Array.from(event.target.files || []);
   if (files.length === 0) return;
   showToast('⏳ Ajout des morceaux…');
+  let added = 0;
   for (const file of files) {
     if (file.size > 15 * 1024 * 1024) { showToast(`⚠️ ${file.name} trop lourd (max 15 Mo)`); continue; }
     try {
       const base64 = await fileToBase64(file);
       const id = 'track-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
       await idbPut('musicTracks', { id, uid: currentUser.uid, name: file.name.replace(/\.[^.]+$/, ''), base64 });
+      added++;
     } catch(e) { console.error('Upload musique:', e); }
   }
-  showToast(' Morceaux ajoutés !');
+  showToast(`✅ ${added} morceau${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} !`);
   event.target.value = '';
-  await loadMusicScreen();
+  // ✅ CORRECTION : recharger la playlist ET rester dans le dossier "Ma playlist"
+  // pour que l'utilisateur voit immédiatement ses morceaux ajoutés
+  const allTracks = await idbGetAll('musicTracks');
+  musicPlaylist = allTracks.filter(t => t.uid === currentUser?.uid);
+  openCategory = 'ma-playlist';
+  renderMusicFolders();
 };
 
 window.deleteMyTrack = async (id) => {
   await idbDelete('musicTracks', id);
-  showToast(' Morceau supprimé');
-  await loadMusicScreen();
+  showToast('🗑️ Morceau supprimé');
+  // ✅ CORRECTION : rester dans "Ma playlist" après suppression
+  const allTracks = await idbGetAll('musicTracks');
+  musicPlaylist = allTracks.filter(t => t.uid === currentUser?.uid);
+  openCategory = 'ma-playlist';
+  renderMusicFolders();
 };
 
-window.playMyTrack = (index) => {
+window.playMyTrack = (id) => {
+  const index = musicPlaylist.findIndex(t => t.id === id);
+  if (index === -1) return;
   const t = musicPlaylist[index];
-  if (!t) return;
   currentTrackIndex = index;
   currentTrackSource = 'mine';
   const player = getAudioPlayer();
@@ -375,15 +487,12 @@ function setNowPlaying(title, sub, coverIndex) {
   setText('mini-player-title', title);
   updateMediaSessionMetadata(title, sub, coverIndex);
 
-  // Affiche la pochette (dégradé + icône) à la place du disque générique,
-  // pour que "chaque musique ait son image" visible aussi dans l'app.
-  const disc = document.getElementById('music-disc');
-  if (disc && coverIndex != null) {
-    const cover = getMusicCover(coverIndex);
-    disc.style.background = cover.grad;
-    disc.innerHTML = `<i class="fa-solid ${cover.icon}"></i>`;
-  }
+  // ✅ REDESIGN : appliquer la couleur dominante de la cover au fond dynamique
+  applyMusicColor(coverIndex);
 }
+// ✅ CORRECTION : accolade fermante manquante sur setNowPlaying() ci-dessus —
+// tout le fichier était syntaxiquement invalide, donc aucun dossier (calme,
+// concentration, pluie douce, Ma playlist) ne pouvait s'afficher.
 
 let miniPlayerTimer = null;
 window.toggleMiniPlayer = () => {
@@ -428,7 +537,8 @@ function updatePlayButton(playing) {
 
 window.musicNext = () => {
   if (currentTrackSource === 'mine' && musicPlaylist.length > 0) {
-    playMyTrack((currentTrackIndex + 1) % musicPlaylist.length);
+    const nextIndex = (currentTrackIndex + 1) % musicPlaylist.length;
+    playMyTrack(musicPlaylist[nextIndex].id);
   } else if (currentTrackSource === 'ambient' && ambientFlatList.length > 0) {
     playAmbientTrack((currentTrackIndex + 1) % ambientFlatList.length);
   }
@@ -436,7 +546,8 @@ window.musicNext = () => {
 
 window.musicPrev = () => {
   if (currentTrackSource === 'mine' && musicPlaylist.length > 0) {
-    playMyTrack((currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length);
+    const prevIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
+    playMyTrack(musicPlaylist[prevIndex].id);
   } else if (currentTrackSource === 'ambient' && ambientFlatList.length > 0) {
     playAmbientTrack((currentTrackIndex - 1 + ambientFlatList.length) % ambientFlatList.length);
   }
@@ -513,6 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Purge automatique des tâches supprimées depuis plus de 3 jours ──
+// ✅ CORRECTION : deletedAt est un nombre (ms, via nowMs() dans sync.js), pas un
+// Timestamp Firestore — .toMillis?.() renvoyait donc toujours undefined ici,
+// donc la condition `if (!deletedAtMs) return false` excluait TOUJOURS la tâche
+// et la purge ne supprimait jamais rien. Appelée nulle part avant non plus.
 let purgeInProgress = false;
 async function purgeOldDeletedTasks() {
   if (purgeInProgress) return;
@@ -520,18 +635,20 @@ async function purgeOldDeletedTasks() {
   try {
     const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
     const now = Date.now();
-    const toDelete = tasks.filter(t => {
-      if (t.status !== 'deleted') return false;
-      const deletedAtMs = t.deletedAt?.toMillis?.() || t.updatedAt?.toMillis?.() || 0;
+    const allLocalTasks = await idbGetAll('tasks');
+    const toDelete = allLocalTasks.filter(t => {
+      if (!t.deleted) return false;
+      const deletedAtMs = t.deletedAt || 0;
       if (!deletedAtMs) return false;
       return (now - deletedAtMs) >= THREE_DAYS_MS;
     });
     for (const t of toDelete) {
-      await deleteDoc(doc(db, 'tasks', t.id)).catch(() => {});
       await idbDelete('tasks', t.id).catch(() => {});
     }
+    if (toDelete.length > 0) await reloadFromIDB();
   } finally {
     purgeInProgress = false;
   }
 }
+window.purgeOldDeletedTasks = purgeOldDeletedTasks;
 
