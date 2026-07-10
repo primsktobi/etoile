@@ -30,8 +30,6 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 function updateAppHeight() {
   document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
-  const topbarEl = document.getElementById('topbar');
-  if (topbarEl) document.documentElement.style.setProperty('--topbar-h', topbarEl.offsetHeight + 'px');
 }
 updateAppHeight();
 window.addEventListener('resize', updateAppHeight);

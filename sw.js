@@ -1,4 +1,4 @@
-const CACHE_NAME = 'TRIVO v4.60';
+const CACHE_NAME = 'TRIVO v4.50';
 const ASSETS = [
   '/',
   '/index.html',

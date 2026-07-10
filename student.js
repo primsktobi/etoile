@@ -455,35 +455,38 @@ window.openAddCourseModal = (dayKey, defaultStart='08:00') => {
   selectedCourseImp   = 'high';
   selectedCourseColor = studentSubjects[0]?.color || '#2563eb';
 
-  document.getElementById('course-modal-title').textContent = `Ajouter — ${DAYS_FR[DAYS_EN.indexOf(dayKey)]}`;
-  document.getElementById('course-start-input').value       = defaultStart;
-  document.getElementById('course-end-input').value         = addMinutes(defaultStart,60);
-  document.getElementById('course-delete-btn').style.display = 'none';
-  selectCourseType('cours');
+  document.getElementById('course-modal-title').textContent        = `Ajouter — ${DAYS_FR[DAYS_EN.indexOf(dayKey)]}`;
+  document.getElementById('course-start-input').value              = defaultStart;
+  document.getElementById('course-end-input').value                = addMinutes(defaultStart, 60);
+  document.getElementById('course-delete-btn').style.display       = 'none';
+  document.getElementById('course-importance-wrap').style.opacity  = '1';
+  ['cours','revision','autre'].forEach(t => {
+    document.getElementById(`course-type-${t}`)?.classList.toggle('selected', t === 'cours');
+  });
+  document.querySelectorAll('.course-imp-chip').forEach(c => c.classList.toggle('selected', c.dataset.imp === 'high'));
   _renderSubjectPicker(null);
   document.getElementById('student-course-modal').classList.add('open');
 };
 
 window.openEditCourseModal = (dayKey, courseId) => {
-  const course = (studentSchedule[dayKey]||[]).find(c=>c.id===courseId);
+  const course = (studentSchedule[dayKey]||[]).find(c => c.id === courseId);
   if (!course) return;
   editingCourseDay    = dayKey;
   editingCourseId     = courseId;
   selectedCourseType  = course.type;
-  selectedCourseImp   = course.importance||'high';
-  selectedCourseColor = course.color||'#2563eb';
+  selectedCourseImp   = course.importance || 'high';
+  selectedCourseColor = course.color || '#2563eb';
 
   document.getElementById('course-modal-title').textContent  = `Modifier — ${DAYS_FR[DAYS_EN.indexOf(dayKey)]}`;
   document.getElementById('course-start-input').value        = course.start;
   document.getElementById('course-end-input').value          = course.end;
   document.getElementById('course-delete-btn').style.display = 'block';
-  selectCourseType(course.type);
-  _renderSubjectPicker(course.subjectId||null);
-  if (course.type!=='cours' && course.type!=='revision') {
-    const nameInput = document.getElementById('course-name-input');
-    if (nameInput) nameInput.value = course.name;
-  }
-  document.querySelectorAll('.course-imp-chip').forEach(c => c.classList.toggle('selected', c.dataset.imp===selectedCourseImp));
+  document.getElementById('course-importance-wrap').style.opacity = course.type === 'cours' ? '1' : '0.4';
+  ['cours','revision','autre'].forEach(t => {
+    document.getElementById(`course-type-${t}`)?.classList.toggle('selected', t === course.type);
+  });
+  document.querySelectorAll('.course-imp-chip').forEach(c => c.classList.toggle('selected', c.dataset.imp === selectedCourseImp));
+  _renderSubjectPicker(course.subjectId || null);
   document.getElementById('student-course-modal').classList.add('open');
 };
 
@@ -600,9 +603,24 @@ async function _createRevisionTask(block, dayKey) {
 }
 
 window.deleteCourseBlock = async () => {
-  if (!editingCourseId||!editingCourseDay) return;
+  if (!editingCourseId || !editingCourseDay) return;
   if (!confirm('Supprimer ce bloc ?')) return;
-  studentSchedule[editingCourseDay] = (studentSchedule[editingCourseDay]||[]).filter(c=>c.id!==editingCourseId);
+
+  const block = (studentSchedule[editingCourseDay]||[]).find(b => b.id === editingCourseId);
+
+  studentSchedule[editingCourseDay] = (studentSchedule[editingCourseDay]||[]).filter(c => c.id !== editingCourseId);
+
+  // Si c'était une révision, supprimer aussi la tâche liée
+  if (block?.type === 'revision') {
+    const linked = tasks.find(t => t.studentStudy && t.studentDay === editingCourseDay && t.time === block.start);
+    if (linked) {
+      await idbPut('tasks', { ...linked, status: 'deleted', deletedAt: Date.now(), updatedAt: Date.now() });
+      tasks = tasks.map(t => t.id === linked.id ? { ...t, status: 'deleted', deletedAt: Date.now() } : t);
+      await queuePush('delete', 'tasks', linked.id, {});
+      if (navigator.onLine) await window.queueFlush();
+    }
+  }
+
   await saveStudentData();
   closeModal('student-course-modal');
   renderStudentSchedule();
@@ -676,10 +694,15 @@ window.saveStudentSettings = async () => {
 // ── ONGLETS ───────────────────────────────────────────────────────────────────
 window.switchStudentTab = (tab) => {
   studentActiveTab = tab;
-  document.querySelectorAll('.student-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
-  document.getElementById('student-schedule-view').style.display  = tab==='schedule' ? 'block':'none';
-  document.getElementById('student-subjects-view').style.display  = tab==='subjects'  ? 'block':'none';
-  if (tab==='subjects') renderSubjectsView();
+  // Mettre à jour les styles inline directement car les boutons ont des styles inline
+  document.querySelectorAll('.student-tab-btn').forEach(b => {
+    const isActive = b.dataset.tab === tab;
+    b.style.background = isActive ? 'var(--card)' : 'transparent';
+    b.style.color       = isActive ? 'var(--text)'  : 'var(--text3)';
+  });
+  document.getElementById('student-schedule-view').style.display = tab === 'schedule' ? 'block' : 'none';
+  document.getElementById('student-subjects-view').style.display = tab === 'subjects'  ? 'block' : 'none';
+  if (tab === 'subjects') renderSubjectsView();
 };
 
 // ── MES MATIÈRES ──────────────────────────────────────────────────────────────
