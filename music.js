@@ -1,9 +1,9 @@
-let ambientCategories = {};
-let ambientFlatList = []; 
-let openCategory = null; 
+// ══════════════════════════════════════════════════════════
+//  MUSIQUE — écran dédié uniquement à "Ma musique" (plus de
+//  dossiers, plus d'ambiance, plus de mode bibliothèque).
+// ══════════════════════════════════════════════════════════
 
 let audioPlayer = null;
-
 
 const MUSIC_COVERS = [
   { icon: 'fa-music', grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
@@ -19,23 +19,6 @@ function getMusicCover(index) {
   return MUSIC_COVERS[Math.abs(index) % MUSIC_COVERS.length];
 }
 
-// ── Couleur dynamique selon la cover (Apple Music style) ────────────────────
-function applyMusicColor(coverIndex) {
-  const cover = getMusicCover(coverIndex ?? 0);
-  const colors = cover.grad.match(/#[0-9a-fA-F]{6}/g) || ['#2563eb', '#8b5cf6'];
-  const dominant = colors[0];
-  document.documentElement.style.setProperty('--music-color', dominant);
-  const blob = document.getElementById('music-bg-blob');
-  if (blob) blob.style.background = dominant;
-  // Mettre à jour la cover dans le player (dégradé + icône)
-  const disc = document.getElementById('music-disc');
-  if (disc) {
-    disc.style.background = cover.grad;
-    disc.style.boxShadow = `0 20px 60px ${dominant}66, 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)`;
-    disc.innerHTML = `<i class="fa-solid ${cover.icon}"></i>`;
-  }
-}
-
 const musicCoverCanvasCache = {};
 function getMusicCoverDataURL(index) {
   const key = Math.abs(index) % MUSIC_COVERS.length;
@@ -47,7 +30,6 @@ function getMusicCoverDataURL(index) {
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
 
-  // Reproduit le dégradé CSS (135deg, 2 couleurs) dans le canvas
   const colors = cover.grad.match(/#[0-9a-fA-F]{6}/g) || ['#6366f1', '#8b5cf6'];
   const gradient = ctx.createLinearGradient(0, 0, size, size);
   gradient.addColorStop(0, colors[0]);
@@ -55,7 +37,7 @@ function getMusicCoverDataURL(index) {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
 
- ctx.beginPath();
+  ctx.beginPath();
   ctx.arc(size/2, size/2, size*0.22, 0, Math.PI*2);
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
   ctx.fill();
@@ -69,10 +51,24 @@ function getMusicCoverDataURL(index) {
   return dataUrl;
 }
 
-let musicPlaylist = []; // morceaux perso { id, name, base64 }
+// Applique soit la vraie pochette (coverBase64), soit un dégradé généré, dans un conteneur.
+function paintCoverEl(el, coverBase64, coverIndex) {
+  if (!el) return;
+  if (coverBase64) {
+    el.style.background = 'none';
+    el.innerHTML = `<img src="${coverBase64}" alt="" />`;
+  } else {
+    const cover = getMusicCover(coverIndex ?? 0);
+    el.style.background = cover.grad;
+    el.innerHTML = `<i class="fa-solid ${cover.icon}"></i>`;
+  }
+}
+
+let musicPlaylist = []; // morceaux perso { id, name, artist, coverBase64, liked, base64 }
 let currentTrackIndex = -1;
-let currentTrackSource = null; // 'mine' | 'ambient'
 let isLooping = false;
+let musicSortOrder = 'recent'; // 'recent' | 'name' | 'liked'
+let musicSearchQuery = '';
 
 function getAudioPlayer() {
   if (!audioPlayer) {
@@ -94,9 +90,9 @@ function setupMediaSessionActions() {
   navigator.mediaSession.setActionHandler('nexttrack', () => { musicNext(); });
 }
 
-function updateMediaSessionMetadata(title, artist, coverIndex) {
+function updateMediaSessionMetadata(title, artist, coverIndex, coverBase64) {
   if (!('mediaSession' in navigator)) return;
-  const artworkSrc = coverIndex != null ? getMusicCoverDataURL(coverIndex) : 'icons/icon-512-v2.png';
+  const artworkSrc = coverBase64 || (coverIndex != null ? getMusicCoverDataURL(coverIndex) : 'icons/icon-512-v2.png');
   navigator.mediaSession.metadata = new MediaMetadata({
     title: title || 'TRIVO',
     artist: artist || 'TRIVO',
@@ -115,290 +111,198 @@ window.toggleMusicFeature = async () => {
   else { stopMusicCompletely(); showToast('Onglet Musique masqué'); }
 };
 
-// Arrête complètement la musique en cours et masque l'icône topbar + mini-lecteur
+// Arrête complètement la musique en cours et masque l'icône topbar + mini-lecteur + barre du bas
 function stopMusicCompletely() {
   if (audioPlayer) {
     audioPlayer.pause();
     audioPlayer.src = '';
   }
   currentTrackIndex = -1;
-  currentTrackSource = null;
-  document.getElementById('music-now-playing').style.display = 'none';
   document.getElementById('topbar-music-icon').style.display = 'none';
   document.getElementById('mini-player-drop').classList.remove('open');
   document.getElementById('topbar-music-icon').classList.remove('active');
   clearTimeout(miniPlayerTimer);
-  clearMusicSessionTimer();
   if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
-  renderMyMusicList?.();
-  renderAmbientList?.();
-  renderMusicFolders?.();
+  updateMusicBottomBarVisibility();
+  renderMusicList?.();
 }
 window.stopMusicCompletely = stopMusicCompletely;
-
-// ── Minuteur de session musique : arrête automatiquement après X minutes ──
-let musicSessionTimer = null;
-let musicSessionEndAt = null;
-let musicSessionTickInterval = null;
-
-window.setMusicSessionTimer = (minutes, btnEl) => {
-  clearMusicSessionTimer();
-  document.querySelectorAll('.music-timer-opt').forEach(b => b.classList.remove('active'));
-  if (minutes === 0) {
-    document.getElementById('music-timer-active').style.display = 'none';
-    return;
-  }
-  if (btnEl) btnEl.classList.add('active');
-  musicSessionEndAt = Date.now() + minutes * 60 * 1000;
-  document.getElementById('music-timer-active').style.display = 'flex';
-  showToast(`⏱️ Arrêt auto programmé dans ${minutes} min`);
-
-  musicSessionTickInterval = setInterval(() => {
-    const remaining = Math.max(0, musicSessionEndAt - Date.now());
-    setText('music-timer-countdown', formatTime(Math.floor(remaining / 1000)));
-    if (remaining <= 0) {
-      clearMusicSessionTimer();
-      stopMusicCompletely();
-      showToast('⏱️ Musique arrêtée (minuteur terminé)');
-    }
-  }, 1000);
-};
-
-function clearMusicSessionTimer() {
-  clearTimeout(musicSessionTimer);
-  clearInterval(musicSessionTickInterval);
-  musicSessionTimer = null;
-  musicSessionTickInterval = null;
-  musicSessionEndAt = null;
-  const opts = document.querySelectorAll('.music-timer-opt');
-  opts.forEach(b => b.classList.remove('active'));
-  const activeEl = document.getElementById('music-timer-active');
-  if (activeEl) activeEl.style.display = 'none';
-}
-
-// ── Mode Bibliothèque silencieuse : ambiance + minuteur combinés ──
-window.toggleLibraryMode = async () => {
-  const toggle = document.getElementById('library-mode-toggle');
-  const isOn = toggle.classList.contains('on');
-  if (isOn) {
-    toggle.classList.remove('on');
-    showToast('📚 Mode Bibliothèque désactivé');
-    return;
-  }
-  toggle.classList.add('on');
-  showToast('📚 Mode Bibliothèque activé — ambiance + 30min');
-  // Lance automatiquement un son d'ambiance calme + minuteur 30 min
-  await loadAmbientManifest();
-  const calmTrack = ambientFlatList.find(t => t.category === 'calme') || ambientFlatList[0];
-  if (calmTrack) {
-    const idx = ambientFlatList.indexOf(calmTrack);
-    playAmbientTrack(idx);
-  }
-  setMusicSessionTimer(30);
-};
-
-// ── Dossiers sounds — clés identiques au sounds-manifest.json ────────────────
-const AMBIENT_FOLDERS = [
-  { key: 'pluie-douce',   label: 'Pluie douce',   icon: 'fa-cloud-rain' },
-  { key: 'concentration', label: 'Concentration',  icon: 'fa-brain'      },
-  { key: 'foret',         label: 'Forêt',          icon: 'fa-tree'       },
-  { key: 'calme',         label: 'Calme',          icon: 'fa-spa'        },
-];
-const AUDIO_EXTS = ['.mp3', '.ogg', '.m4a', '.aac', '.wav', '.flac'];
-
-async function loadAmbientManifest() {
-  ambientCategories = {};
-  ambientFlatList = [];
-
-  // Priorité 1 : manifest global sounds/sounds-manifest.json
-  try {
-    const res = await fetch('sounds/sounds-manifest.json');
-    if (res.ok) {
-      const data = await res.json();
-      Object.entries(data).forEach(([key, cat]) => {
-        if (key.startsWith('_')) return;
-        ambientCategories[key] = cat;
-        (cat.files || []).forEach(filename => {
-          ambientFlatList.push({ category: key, label: cat.label, icon: cat.icon || 'fa-music', filename, url: `sounds/${key}/${filename}` });
-        });
-      });
-      if (ambientFlatList.length > 0) return;
-    }
-  } catch(e) { /* pas de manifest global */ }
-
-  // Priorité 2 : index.json par dossier (sounds/pluie/index.json)
-  for (const folder of AMBIENT_FOLDERS) {
-    ambientCategories[folder.key] = { label: folder.label, icon: folder.icon, files: [] };
-    let loaded = false;
-    try {
-      const r = await fetch(`sounds/${folder.key}/index.json`);
-      if (r.ok) {
-        const files = await r.json();
-        ambientCategories[folder.key].files = files;
-        files.forEach(filename => {
-          ambientFlatList.push({ category: folder.key, label: folder.label, icon: folder.icon, filename, url: `sounds/${folder.key}/${filename}` });
-        });
-        loaded = true;
-      }
-    } catch(e) { /* pas d'index.json */ }
-
-    // Priorité 3 : scan HEAD sur fichiers numérotés (ex: pluie01.mp3)
-    if (!loaded) {
-      const found = [];
-      const checks = [];
-      for (let i = 1; i <= 20; i++) {
-        for (const ext of AUDIO_EXTS) {
-          const filename = `${folder.key}${String(i).padStart(2,'0')}${ext}`;
-          checks.push(
-            fetch(`sounds/${folder.key}/${filename}`, { method: 'HEAD' })
-              .then(r => { if (r.ok) found.push(filename); })
-              .catch(() => {})
-          );
-        }
-      }
-      await Promise.all(checks);
-      if (found.length > 0) {
-        found.sort();
-        ambientCategories[folder.key].files = found;
-        found.forEach(filename => {
-          ambientFlatList.push({ category: folder.key, label: folder.label, icon: folder.icon, filename, url: `sounds/${folder.key}/${filename}` });
-        });
-      }
-    }
-  }
-}
 
 async function loadMusicScreen() {
   const allTracks = await idbGetAll('musicTracks');
   musicPlaylist = allTracks.filter(t => t.uid === currentUser?.uid);
-  await loadAmbientManifest();
-  renderMusicFolders();
-
-  // Sur iPhone/iPad, le slider de volume n'a aucun effet réel (restriction système
-  // Apple) — on le masque et on affiche une note explicative à la place.
-  const volRow = document.getElementById('music-volume-row');
-  const iosNote = document.getElementById('music-volume-ios-note');
-  if (volRow && iosNote) {
-    volRow.style.display = isIOS ? 'none' : 'flex';
-    iosNote.style.display = isIOS ? 'flex' : 'none';
-  }
-
-  const vol = document.getElementById('music-volume');
-  if (vol) paintVolumeBar(vol, vol.value);
-  const seek = document.getElementById('music-seek');
-  if (seek) paintProgressBar(seek, seek.value);
+  updateSortTabsUI();
+  renderMusicList();
+  updateMusicBottomBarVisibility();
 }
 
-function renderMusicFolders() {
-  const myEl = document.getElementById('my-music-list');
-  const ambEl = document.getElementById('ambient-music-list');
-  if (!myEl || !ambEl) return;
-
-  if (openCategory) {
-    // Vue dossier ouvert : un seul conteneur avec bouton retour + grid
-    myEl.style.display = 'block';
-    ambEl.style.display = 'none';
-    renderOpenFolderGrid(myEl, openCategory);
-    return;
-  }
-
-  myEl.style.display = 'block';
-  ambEl.style.display = 'block';
-
-  // Dossier "Ma playlist"
-  myEl.innerHTML = folderTileHTML('ma-playlist', 'Ma playlist', 'fa-list-music', musicPlaylist.length);
-
-  // ✅ CORRECTION : afficher TOUS les dossiers déclarés dans AMBIENT_FOLDERS
-  // même ceux sans fichiers détectés (0 fichier = dossier visible mais vide)
-  // On complète avec les catégories du manifest si présentes
-  const allFolderKeys = [
-    ...AMBIENT_FOLDERS.map(f => f.key),
-    ...Object.keys(ambientCategories).filter(k => !k.startsWith('_') && !AMBIENT_FOLDERS.find(f => f.key === k))
-  ];
-  ambEl.innerHTML = allFolderKeys.map(key => {
-    const folder = AMBIENT_FOLDERS.find(f => f.key === key);
-    const cat = ambientCategories[key];
-    const label = cat?.label || folder?.label || key;
-    const icon = cat?.icon || folder?.icon || 'fa-music';
-    const count = ambientFlatList.filter(t => t.category === key).length;
-    return folderTileHTML(key, label, icon, count);
-  }).join('');
-}
-
-window.toggleMusicSort = () => {
-  musicSortOrder = musicSortOrder === 'recent' ? 'name' : 'recent';
-  renderMusicFolders();
+const MUSIC_SORT_MODES = ['recent', 'name', 'liked'];
+const MUSIC_SORT_ICONS = {
+  recent: '<i class="fa-solid fa-clock"></i>',
+  name: 'A→Z',
+  liked: '🤍',
 };
 
-function folderTileHTML(key, label, icon, count) {
-  return `
-    <div class="music-category-header" onclick="toggleMusicCategory('${key}')" style="margin-bottom:8px;">
-      <div class="music-track-icon"><i class="fa-solid ${icon}"></i></div>
-      <div class="music-track-name">${escHtml(label)} <span style="color:var(--text3);font-weight:400;">(${count})</span></div>
-      <i class="fa-solid fa-chevron-right" style="color:var(--text3);font-size:12px;"></i>
-    </div>`;
+window.cycleMusicSort = () => {
+  const nextIndex = (MUSIC_SORT_MODES.indexOf(musicSortOrder) + 1) % MUSIC_SORT_MODES.length;
+  musicSortOrder = MUSIC_SORT_MODES[nextIndex];
+  updateSortTabsUI();
+  renderMusicList();
+};
+
+function updateSortTabsUI() {
+  const btn = document.getElementById('music-sort-btn');
+  if (!btn) return;
+  btn.innerHTML = MUSIC_SORT_ICONS[musicSortOrder];
+  const titles = { recent: 'Récent', name: 'Nom (A→Z)', liked: 'Favoris' };
+  btn.title = titles[musicSortOrder];
 }
 
-let musicSortOrder = 'recent';
+// Liste "Ma musique" style Spotify : recherche + tri (récent/nom/favoris) + pochette réelle + like.
+function renderMusicList() {
+  const container = document.getElementById('my-music-list');
+  if (!container) return;
 
-function renderOpenFolderGrid(container, key) {
-  const isPlaylist = key === 'ma-playlist';
-  const label = isPlaylist ? 'Ma playlist' : (ambientCategories[key]?.label || key);
-  let items = isPlaylist ? [...musicPlaylist] : ambientFlatList.filter(t => t.category === key);
-
-  // Tri si c'est la playlist perso
-  if (isPlaylist) {
-    if (musicSortOrder === 'name') {
-      items.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-    }
-    // 'recent' = ordre d'insertion (par défaut IndexedDB)
+  const q = musicSearchQuery.trim().toLowerCase();
+  let items = [...musicPlaylist];
+  if (q) {
+    items = items.filter(t => (t.name||'').toLowerCase().includes(q) || (t.artist||'').toLowerCase().includes(q));
   }
+  if (musicSortOrder === 'name') {
+    items.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  } else if (musicSortOrder === 'liked') {
+    items.sort((a,b) => (b.liked?1:0) - (a.liked?1:0));
+  }
+  // 'recent' = ordre d'insertion (par défaut IndexedDB)
 
-  const sortBtn = isPlaylist ? `
-    <button onclick="toggleMusicSort()" style="background:none;color:var(--text2);font-size:14px;padding:4px 8px;" title="${musicSortOrder==='name'?'Trier par récent':'Trier par nom'}">
-      <i class="fa-solid ${musicSortOrder==='name'?'fa-clock':'fa-arrow-down-a-z'}"></i>
-    </button>` : '';
-
-  const backBtn = `<div class="music-back-btn" style="display:flex;align-items:center;justify-content:space-between;" onclick="void 0"><div onclick="toggleMusicCategory(null)" style="cursor:pointer;"><i class="fa-solid fa-arrow-left"></i> ${escHtml(label)}</div>${sortBtn}</div>`;
-
+  if (musicPlaylist.length === 0) {
+    container.innerHTML = `<div class="music-list-empty">Aucune musique pour l'instant — appuie sur + pour en ajouter</div>`;
+    return;
+  }
   if (items.length === 0) {
-    container.innerHTML = backBtn + `<div style="color:var(--text3);font-size:13px;padding:8px 0;">Aucun morceau dans ce dossier</div>`;
+    container.innerHTML = `<div class="music-list-empty">Aucun résultat pour « ${escHtml(musicSearchQuery)} »</div>`;
     return;
   }
 
-  const gridItems = items.map((t, i) => {
-    if (isPlaylist) {
-      // ✅ CORRECTION : on identifie le morceau par son id, pas par sa position dans
-      // la liste affichée — sinon un tri par nom joue le morceau resté à cette même
-      // position dans musicPlaylist (ordre d'insertion) au lieu de celui affiché.
-      const realIndex = musicPlaylist.findIndex(x => x.id === t.id);
-      const isPlaying = currentTrackSource === 'mine' && currentTrackIndex === realIndex;
-      const name = t.name;
-      return musicGridItemHTML(name, isPlaying, `playMyTrack('${t.id}')`, `confirmDeleteTrack('${t.id}', '${escHtml(name)}')`, realIndex);
-    } else {
-      const flatIndex = ambientFlatList.indexOf(t);
-      const isPlaying = currentTrackSource === 'ambient' && currentTrackIndex === flatIndex;
-      const name = t.filename.replace(/\.[^.]+$/, '');
-      return musicGridItemHTML(name, isPlaying, `playAmbientTrack(${flatIndex})`, null, flatIndex);
-    }
+  const rows = items.map((t, i) => {
+    // On identifie le morceau par son id, pas par sa position affichée — sinon un tri/filtre
+    // joue le morceau resté à cette même position dans musicPlaylist (ordre d'insertion)
+    // au lieu de celui réellement affiché à cette ligne.
+    const realIndex = musicPlaylist.findIndex(x => x.id === t.id);
+    const isPlaying = currentTrackIndex === realIndex;
+    const coverInner = t.coverBase64
+      ? `<img src="${t.coverBase64}" alt="" />`
+      : `<i class="fa-solid ${getMusicCover(realIndex).icon}"></i>`;
+    const coverStyle = t.coverBase64 ? '' : ` style="background:${getMusicCover(realIndex).grad};color:#fff;"`;
+    return `
+      <div class="music-list-row-wrap">
+        <div class="music-list-row-delete-bg"><i class="fa-solid fa-trash"></i></div>
+        <div class="music-list-row${isPlaying?' playing':''}" data-id="${t.id}" data-name="${escHtml(t.name)}" onclick="playMyTrack('${t.id}')">
+          <div class="music-list-index">${isPlaying ? '<i class="fa-solid fa-volume-high"></i>' : (i+1)}</div>
+          <div class="music-list-cover"${coverStyle}>${coverInner}</div>
+          <div class="music-list-info">
+            <div class="music-list-title">${escHtml(t.name)}</div>
+            <div class="music-list-artist">${escHtml(t.artist || 'Artiste inconnu')}</div>
+          </div>
+          <div class="music-list-like${t.liked?' liked':''}" onclick="event.stopPropagation();toggleTrackLike('${t.id}')">
+            <i class="fa-${t.liked?'solid':'regular'} fa-heart"></i>
+          </div>
+        </div>
+      </div>`;
   }).join('');
 
-  container.innerHTML = backBtn + `<div class="music-grid">${gridItems}</div>`;
+  container.innerHTML = rows;
+  attachSwipeToDelete(container);
 }
 
-function musicGridItemHTML(name, isPlaying, onClickPlay, onDblClickDelete, coverIndex) {
-  const dblClick = onDblClickDelete ? `ondblclick="event.stopPropagation();${onDblClickDelete}"` : '';
-  const cover = getMusicCover(coverIndex);
-  return `
-    <div class="music-grid-item" onclick="${onClickPlay}" ${dblClick}>
-      <div class="music-grid-rect" style="background:${cover.grad};${isPlaying?'outline:2px solid var(--blue);':''}"><i class="fa-solid ${isPlaying ? 'fa-volume-high' : cover.icon}"></i></div>
-      <div class="music-grid-name">${escHtml(name)}</div>
-    </div>`;
+// Swipe horizontal sur une ligne : au-delà de 40% de sa largeur, on relâche -> confirmation
+// de suppression. En dessous, la ligne revient à sa place (snap-back).
+// ⚠️ N'attacher les écouteurs qu'une seule fois sur le conteneur (delegation) : le conteneur
+// #my-music-list n'est jamais recréé, seul son innerHTML change à chaque rendu. Sans le flag
+// ci-dessous, chaque appel à renderMusicList() (recherche, tri, lecture, ajout, suppression...)
+// empilait un nouveau jeu d'écouteurs, provoquant plusieurs popups de suppression simultanés
+// après quelques interactions.
+function attachSwipeToDelete(container) {
+  if (container.dataset.swipeBound === '1') return;
+  container.dataset.swipeBound = '1';
+
+  let dragging = null; // { row, startX, startY, width, currentX, locked }
+
+  container.addEventListener('touchstart', (e) => {
+    const row = e.target.closest('.music-list-row');
+    if (!row) return;
+    const touch = e.touches[0];
+    dragging = { row, startX: touch.clientX, startY: touch.clientY, width: row.offsetWidth, currentX: 0, locked: null };
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragging.startX;
+    const dy = touch.clientY - dragging.startY;
+
+    if (dragging.locked === null) {
+      // On détermine si c'est un swipe horizontal ou un scroll vertical (une seule fois)
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      dragging.locked = Math.abs(dx) > Math.abs(dy);
+      if (dragging.locked) dragging.row.classList.add('dragging');
+    }
+    if (!dragging.locked) return; // scroll vertical normal, on ne touche pas à la ligne
+
+    e.preventDefault();
+    const clamped = Math.min(0, Math.max(dx, -dragging.width)); // swipe vers la gauche uniquement
+    dragging.currentX = clamped;
+    dragging.row.style.transform = `translateX(${clamped}px)`;
+  }, { passive: false });
+
+  container.addEventListener('touchend', () => {
+    if (!dragging) return;
+    const { row, currentX, width } = dragging;
+    row.classList.remove('dragging');
+    const passedThreshold = Math.abs(currentX) >= width * 0.4;
+    if (passedThreshold) {
+      row.style.transform = `translateX(-${width}px)`;
+      confirmDeleteTrack(row.dataset.id, row.dataset.name);
+      // Si l'utilisateur annule, la ligne réapparaît au prochain rendu (renderMusicList
+      // est appelé après annulation ou suppression, donc pas besoin de snap-back ici).
+    } else {
+      row.style.transform = 'translateX(0)';
+    }
+    dragging = null;
+  });
 }
 
-window.toggleMusicCategory = (key) => {
-  openCategory = key; // null pour revenir à la liste des dossiers, sinon la clé du dossier ouvert
-  renderMusicFolders();
+// ── Recherche depuis la topbar (écran Musique uniquement) ──────────────────
+window.toggleMusicSearchBar = () => {
+  const bar = document.getElementById('music-topbar-search');
+  const isOpen = bar.classList.contains('open');
+  if (isOpen) { closeMusicSearchBar(); return; }
+  bar.classList.add('open');
+  requestAnimationFrame(() => document.getElementById('music-topbar-search-input')?.focus());
+};
+
+function closeMusicSearchBar() {
+  const bar = document.getElementById('music-topbar-search');
+  if (!bar) return;
+  bar.classList.remove('open');
+  musicSearchQuery = '';
+  const input = document.getElementById('music-topbar-search-input');
+  if (input) input.value = '';
+  renderMusicList();
+}
+window.closeMusicSearchBar = closeMusicSearchBar;
+
+window.onMusicSearchInput = (value) => {
+  musicSearchQuery = value;
+  renderMusicList();
+};
+
+window.toggleTrackLike = async (id) => {
+  const track = musicPlaylist.find(t => t.id === id);
+  if (!track) return;
+  track.liked = !track.liked;
+  await idbPut('musicTracks', track);
+  renderMusicList();
 };
 
 window.confirmDeleteTrack = (id, name) => {
@@ -410,13 +314,40 @@ window.confirmDeleteTrack = (id, name) => {
     <div class="confirm-popup">
       <div class="confirm-popup-title">Supprimer « ${escHtml(name)} » ?</div>
       <div class="confirm-popup-actions">
-        <button class="btn-secondary" style="flex:1;padding:10px;border-radius:10px;" onclick="document.getElementById('confirm-delete-popup').remove()">Annuler</button>
+        <button class="btn-secondary" style="flex:1;padding:10px;border-radius:10px;" onclick="document.getElementById('confirm-delete-popup').remove();renderMusicList();">Annuler</button>
         <button class="btn-danger" style="flex:1;padding:10px;border-radius:10px;" onclick="deleteMyTrack('${id}');document.getElementById('confirm-delete-popup').remove()">Supprimer</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); renderMusicList(); } });
 };
+
+// Lit les métadonnées embarquées (ID3 pour mp3, tags MP4/iTunes pour m4a) via jsmediatags,
+// chargée en local (lib/jsmediatags.min.js) — aucune connexion requise, ça marche offline.
+// Renvoie { title, artist, coverBase64 } — chaque champ est null si absent du fichier.
+function readTrackMetadata(file) {
+  return new Promise((resolve) => {
+    if (typeof jsmediatags === 'undefined') { resolve({ title: null, artist: null, coverBase64: null }); return; }
+    new jsmediatags.Reader(file)
+      .setTagsToRead(['title', 'artist', 'picture'])
+      .read({
+        onSuccess: (tag) => {
+          const t = tag.tags || {};
+          let coverBase64 = null;
+          if (t.picture && t.picture.data && t.picture.format) {
+            try {
+              let binary = '';
+              const data = t.picture.data;
+              for (let i = 0; i < data.length; i++) binary += String.fromCharCode(data[i]);
+              coverBase64 = `data:${t.picture.format};base64,${btoa(binary)}`;
+            } catch(e) { coverBase64 = null; }
+          }
+          resolve({ title: t.title || null, artist: t.artist || null, coverBase64 });
+        },
+        onError: () => resolve({ title: null, artist: null, coverBase64: null })
+      });
+  });
+}
 
 window.handleMusicUpload = async (event) => {
   const files = Array.from(event.target.files || []);
@@ -427,29 +358,34 @@ window.handleMusicUpload = async (event) => {
     if (file.size > 15 * 1024 * 1024) { showToast(`⚠️ ${file.name} trop lourd (max 15 Mo)`); continue; }
     try {
       const base64 = await fileToBase64(file);
+      const meta = await readTrackMetadata(file);
       const id = 'track-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
-      await idbPut('musicTracks', { id, uid: currentUser.uid, name: file.name.replace(/\.[^.]+$/, ''), base64 });
+      await idbPut('musicTracks', {
+        id, uid: currentUser.uid,
+        name: meta.title || file.name.replace(/\.[^.]+$/, ''),
+        artist: meta.artist || 'Artiste inconnu',
+        coverBase64: meta.coverBase64 || null, // null = pas de pochette dans le fichier -> fallback généré à l'affichage
+        liked: false,
+        base64
+      });
       added++;
     } catch(e) { console.error('Upload musique:', e); }
   }
   showToast(`✅ ${added} morceau${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} !`);
   event.target.value = '';
-  // ✅ CORRECTION : recharger la playlist ET rester dans le dossier "Ma playlist"
-  // pour que l'utilisateur voit immédiatement ses morceaux ajoutés
   const allTracks = await idbGetAll('musicTracks');
   musicPlaylist = allTracks.filter(t => t.uid === currentUser?.uid);
-  openCategory = 'ma-playlist';
-  renderMusicFolders();
+  renderMusicList();
 };
 
 window.deleteMyTrack = async (id) => {
+  const wasPlaying = musicPlaylist[currentTrackIndex]?.id === id;
   await idbDelete('musicTracks', id);
   showToast('🗑️ Morceau supprimé');
-  // ✅ CORRECTION : rester dans "Ma playlist" après suppression
+  if (wasPlaying) stopMusicCompletely();
   const allTracks = await idbGetAll('musicTracks');
   musicPlaylist = allTracks.filter(t => t.uid === currentUser?.uid);
-  openCategory = 'ma-playlist';
-  renderMusicFolders();
+  renderMusicList();
 };
 
 window.playMyTrack = (id) => {
@@ -457,42 +393,50 @@ window.playMyTrack = (id) => {
   if (index === -1) return;
   const t = musicPlaylist[index];
   currentTrackIndex = index;
-  currentTrackSource = 'mine';
   const player = getAudioPlayer();
   player.src = t.base64;
-  setNowPlaying(t.name, 'Mon morceau', index);
+  setNowPlaying(t.name, t.artist || 'Artiste inconnu', index, t.coverBase64);
   player.play();
-  renderMyMusicList();
-  renderAmbientList();
+  renderMusicList();
 };
 
-window.playAmbientTrack = (index) => {
-  const t = ambientFlatList[index];
-  if (!t) return;
-  currentTrackIndex = index;
-  currentTrackSource = 'ambient';
-  const player = getAudioPlayer();
-  player.src = t.url;
-  setNowPlaying(t.filename.replace(/\.[^.]+$/, ''), t.label, index);
-  player.play().catch(() => showToast('⚠️ Impossible de lire ce son'));
-  renderMyMusicList();
-  renderAmbientList();
-};
-
-function setNowPlaying(title, sub, coverIndex) {
-  setText('music-current-title', title);
-  setText('music-current-sub', sub);
-  document.getElementById('music-now-playing').style.display = 'block';
+function setNowPlaying(title, sub, coverIndex, coverBase64) {
   document.getElementById('topbar-music-icon').style.display = 'flex';
   setText('mini-player-title', title);
-  updateMediaSessionMetadata(title, sub, coverIndex);
+  updateMediaSessionMetadata(title, sub, coverIndex, coverBase64);
 
-  // ✅ REDESIGN : appliquer la couleur dominante de la cover au fond dynamique
-  applyMusicColor(coverIndex);
+  paintCoverEl(document.getElementById('topbar-music-cover'), coverBase64, coverIndex);
+  paintCoverEl(document.getElementById('music-bottom-cover'), coverBase64, coverIndex);
+  setText('music-bottom-title', title);
+  setText('music-bottom-sub', sub);
+
+  const miniCover = document.getElementById('mini-player-cover');
+  if (miniCover) {
+    if (coverBase64) { miniCover.src = coverBase64; miniCover.style.display = 'block'; }
+    else { miniCover.style.display = 'none'; miniCover.src = ''; }
+  }
+
+  // Reset visuel de la progression tant que la nouvelle durée n'est pas connue
+  const ring = document.getElementById('topbar-music-ring-fill');
+  if (ring) ring.style.strokeDashoffset = MUSIC_RING_CIRCUMFERENCE;
+  const fill = document.getElementById('music-bottom-progress-fill');
+  if (fill) fill.style.width = '0%';
+  setText('music-bottom-elapsed', '0:00');
+  setText('music-bottom-duration', '0:00');
+
+  updateMusicBottomBarVisibility();
 }
-// ✅ CORRECTION : accolade fermante manquante sur setNowPlaying() ci-dessus —
-// tout le fichier était syntaxiquement invalide, donc aucun dossier (calme,
-// concentration, pluie douce, Ma playlist) ne pouvait s'afficher.
+
+// La barre au-dessus du footbar n'apparaît que sur l'écran Musique, et seulement
+// si un morceau est chargé.
+function updateMusicBottomBarVisibility() {
+  const bar = document.getElementById('music-bottom-bar');
+  if (!bar) return;
+  const onMusicScreen = document.getElementById('screen-music')?.classList.contains('active');
+  const hasTrack = currentTrackIndex !== -1;
+  bar.classList.toggle('show', !!(onMusicScreen && hasTrack));
+}
+window.updateMusicBottomBarVisibility = updateMusicBottomBarVisibility;
 
 let miniPlayerTimer = null;
 window.toggleMiniPlayer = () => {
@@ -518,6 +462,15 @@ document.addEventListener('click', e => {
   if (drop && drop.contains(e.target)) resetMiniPlayerAutoClose();
 });
 
+// Clic en dehors de la barre de recherche musique (et de son icône) = on la referme.
+document.addEventListener('click', e => {
+  const bar = document.getElementById('music-topbar-search');
+  const icon = document.getElementById('topbar-music-search-icon');
+  if (!bar || !bar.classList.contains('open')) return;
+  if (bar.contains(e.target) || (icon && icon.contains(e.target))) return;
+  closeMusicSearchBar();
+});
+
 window.musicTogglePlay = () => {
   const player = getAudioPlayer();
   if (!player.src) { showToast('🎵 Choisis un morceau d\'abord'); return; }
@@ -525,103 +478,52 @@ window.musicTogglePlay = () => {
 };
 
 function updatePlayButton(playing) {
-  const btn = document.getElementById('music-play-btn');
-  const disc = document.getElementById('music-disc');
   const miniBtn = document.getElementById('mini-play-btn');
-  const viz = document.getElementById('music-visualizer');
-  if (btn) btn.innerHTML = playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+  const bottomBtn = document.getElementById('music-bottom-play-btn');
   if (miniBtn) miniBtn.innerHTML = playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
-  if (disc) disc.classList.toggle('spinning', playing);
-  if (viz) viz.classList.toggle('playing', playing);
+  if (bottomBtn) bottomBtn.innerHTML = playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
 }
 
 window.musicNext = () => {
-  if (currentTrackSource === 'mine' && musicPlaylist.length > 0) {
-    const nextIndex = (currentTrackIndex + 1) % musicPlaylist.length;
-    playMyTrack(musicPlaylist[nextIndex].id);
-  } else if (currentTrackSource === 'ambient' && ambientFlatList.length > 0) {
-    playAmbientTrack((currentTrackIndex + 1) % ambientFlatList.length);
-  }
+  if (musicPlaylist.length === 0) return;
+  const nextIndex = (currentTrackIndex + 1) % musicPlaylist.length;
+  playMyTrack(musicPlaylist[nextIndex].id);
 };
 
 window.musicPrev = () => {
-  if (currentTrackSource === 'mine' && musicPlaylist.length > 0) {
-    const prevIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
-    playMyTrack(musicPlaylist[prevIndex].id);
-  } else if (currentTrackSource === 'ambient' && ambientFlatList.length > 0) {
-    playAmbientTrack((currentTrackIndex - 1 + ambientFlatList.length) % ambientFlatList.length);
-  }
+  if (musicPlaylist.length === 0) return;
+  const prevIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
+  playMyTrack(musicPlaylist[prevIndex].id);
 };
 
 window.musicToggleLoop = () => {
   isLooping = !isLooping;
   getAudioPlayer().loop = isLooping;
-  document.getElementById('music-loop-btn')?.classList.toggle('active', isLooping);
   document.getElementById('mini-loop-btn')?.classList.toggle('active', isLooping);
 };
+
+const MUSIC_RING_CIRCUMFERENCE = 94.2477; // 2 * π * 15 (r du cercle SVG topbar)
+
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
 
 function updateSeekBar() {
   const player = audioPlayer;
   if (!player || !player.duration) return;
-  const seek = document.getElementById('music-seek');
   const pct = (player.currentTime / player.duration) * 100;
-  if (seek && !seek._dragging) {
-    seek.value = pct;
-    paintProgressBar(seek, pct);
-  }
-  setText('music-time-elapsed', formatTime(player.currentTime));
-  setText('music-time-remaining', '-' + formatTime(player.duration - player.currentTime));
+
+  const ring = document.getElementById('topbar-music-ring-fill');
+  if (ring) ring.style.strokeDashoffset = MUSIC_RING_CIRCUMFERENCE * (1 - pct / 100);
+
+  const fill = document.getElementById('music-bottom-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  setText('music-bottom-elapsed', formatTime(player.currentTime));
+  setText('music-bottom-duration', formatTime(player.duration));
 }
-
-function formatTime(sec) {
-  if (!isFinite(sec) || sec < 0) sec = 0;
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2,'0')}`;
-}
-
-// Barre de progression : remplissage blanc qui avance, reste en gris
-function paintProgressBar(el, pct) {
-  el.style.background = `linear-gradient(to right, #fff 0%, #fff ${pct}%, var(--bg3) ${pct}%, var(--bg3) 100%)`;
-}
-
-// Barre de volume : couleur UNIFORME du début jusqu'au curseur, selon le niveau (bleu bas → rouge haut)
-function paintVolumeBar(el, pct) {
-  const t = pct / 100;
-  const r = Math.round(0x25 + (0xef - 0x25) * t);
-  const g = Math.round(0x63 + (0x44 - 0x63) * t);
-  const b = Math.round(0xeb + (0x44 - 0xeb) * t);
-  const color = `rgb(${r},${g},${b})`;
-  el.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--bg3) ${pct}%, var(--bg3) 100%)`;
-
-  const icon = document.getElementById('music-volume-icon');
-  if (icon) {
-    icon.style.color = color;
-    icon.className = 'fa-solid ' + (pct === 0 ? 'fa-volume-xmark' : pct < 50 ? 'fa-volume-low' : 'fa-volume-high');
-  }
-}
-
-document.addEventListener('input', e => {
-  if (e.target.id === 'music-seek') {
-    e.target._dragging = true;
-    const player = getAudioPlayer();
-    if (player.duration) player.currentTime = (e.target.value / 100) * player.duration;
-    paintProgressBar(e.target, e.target.value);
-  }
-  if (e.target.id === 'music-volume') {
-    getAudioPlayer().volume = e.target.value / 100;
-    paintVolumeBar(e.target, e.target.value);
-  }
-});
-document.addEventListener('change', e => {
-  if (e.target.id === 'music-seek') e.target._dragging = false;
-});
-
-// Initialiser l'apparence de la barre de volume au chargement (valeur par défaut 70)
-document.addEventListener('DOMContentLoaded', () => {
-  const vol = document.getElementById('music-volume');
-  if (vol) paintVolumeBar(vol, vol.value);
-});
 
 // ── Purge automatique des tâches supprimées depuis plus de 3 jours ──
 // ✅ CORRECTION : deletedAt est un nombre (ms, via nowMs() dans sync.js), pas un
@@ -651,4 +553,3 @@ async function purgeOldDeletedTasks() {
   }
 }
 window.purgeOldDeletedTasks = purgeOldDeletedTasks;
-

@@ -193,12 +193,16 @@ const MSG_ESSAIE = [
 // ── Système de célébration ─────────────────────────────────────────────────
 let motivationLastShownDate = null;
 let unlockedThemes = [];
+let firstTaskCreated = false;
+let firstTaskCompleted = false;
 
 async function loadMotivationState() {
   const cached = await idbGet('prefs', 'motivationState');
   if (cached?.value) {
     motivationLastShownDate = cached.value.lastDate;
     unlockedThemes = cached.value.unlockedThemes || [];
+    firstTaskCreated = !!cached.value.firstTaskCreated;
+    firstTaskCompleted = !!cached.value.firstTaskCompleted;
   }
   if (currentUser) {
     try {
@@ -213,12 +217,106 @@ async function loadMotivationState() {
 }
 
 async function saveMotivationState() {
-  const state = { lastDate: motivationLastShownDate, unlockedThemes };
+  const state = { lastDate: motivationLastShownDate, unlockedThemes, firstTaskCreated, firstTaskCompleted };
   await idbPut('prefs', { key: 'motivationState', value: state });
   if (currentUser) {
     updateDoc(doc(db, 'users', currentUser.uid), { unlockedThemes }).catch(() => {});
   }
 }
+
+// ── PHRASES : PREMIER LANCEMENT (écran vide) ────────────────────────────────
+// Accroche affichée tant qu'aucune tâche n'a jamais été créée sur le compte.
+const MSG_FIRST_LAUNCH_HOOK = [
+  "T'es là. C'est déjà ça. Qu'est-ce qu'on fait aujourd'hui ?",
+  "Bon. On commence par quoi ?",
+  "Une page blanche. À toi de décider ce qui compte.",
+  "Rien encore. Ça va changer.",
+  "T'as ouvert l'app. Premier pas fait. La suite ?",
+  "Pas de liste. Pas d'historique. Juste toi, maintenant.",
+  "On y va quand tu veux. Pas de pression, juste une première tâche.",
+  "Ta flamme n'attend qu'une chose : que tu commences."
+];
+
+// ── PHRASES : PREMIÈRE TÂCHE CRÉÉE ──────────────────────────────────────────
+const MSG_FIRST_TASK_CREATED = [
+  "Une tâche posée, un engagement pris envers toi. On y va.",
+  "C'est parti. Ce n'est plus une idée, c'est écrit.",
+  "Première ligne posée. Le reste va suivre.",
+  "Tu viens de te donner un rendez-vous. Tiens-le.",
+  "Posée. Maintenant elle existe, et toi tu sais qu'elle t'attend.",
+  "Le début compte plus que tu ne le penses. C'est fait.",
+  "Une tâche, un engagement. Simple, mais ça change tout.",
+  "Tu viens d'ouvrir le compte. La suite s'écrit maintenant."
+];
+
+// ── PHRASES : PREMIÈRE TÂCHE TERMINÉE (moment le plus marquant) ────────────
+const MSG_FIRST_TASK_DONE = [
+  "Tu l'as fait. C'est le genre de moment qui compte plus qu'il n'y paraît.",
+  "Première promesse tenue envers toi-même. Ça ne s'oublie pas.",
+  "Ce n'est pas une case cochée. C'est la preuve que tu tiens parole.",
+  "Tu viens de faire ce que beaucoup remettent à demain. Aujourd'hui, tu l'as fait.",
+  "Une première fois. Il y en aura d'autres — mais celle-ci, tu t'en souviendras.",
+  "Ta flamme vient de s'allumer. C'est toi qui l'as fait.",
+  "Tu doutais peut-être. Et pourtant, c'est fait.",
+  "Le premier pas est le plus dur. Tu viens de le passer."
+];
+
+// ── PHRASES : TÂCHE INTERROMPUE (ton calme, jamais culpabilisant) ──────────
+const MSG_TASK_INTERRUPTED = [
+  "T'as pas fini, et c'est ok. La flamme n'éteint pas pour ça. Tu reprends quand tu veux.",
+  "Interrompu, pas abandonné. Ça reste là, prêt quand tu l'es.",
+  "Pas aujourd'hui, apparemment. Ce n'est pas grave. Tu reviens quand tu veux.",
+  "Ça arrive. Rien n'est perdu, juste mis en pause.",
+  "T'as commencé, ça compte déjà. Le reste attendra.",
+  "Pas besoin de finir pour que ce soit valable. Tu reprendras.",
+  "Une pause, pas un échec. On continue quand tu veux.",
+  "Ce n'est pas fini. Ce n'est pas grave non plus. À toi de voir la suite."
+];
+
+// ── Banner "coach" non-bloquant (utilisé pour les 3 moments déclencheurs) ──
+let coachMomentTimer;
+function showCoachMoment(emoji, message, tone = 'default') {
+  const existing = document.getElementById('coach-moment-banner');
+  if (existing) existing.remove();
+  clearTimeout(coachMomentTimer);
+
+  const el = document.createElement('div');
+  el.id = 'coach-moment-banner';
+  el.className = `coach-moment-banner ${tone === 'calm' ? 'calm' : ''}`;
+  el.innerHTML = `<div class="coach-moment-emoji">${emoji}</div><div class="coach-moment-text">${message}</div>`;
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  coachMomentTimer = setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 4200);
+}
+
+function pick(pool) { return pool[Math.floor(Math.random() * pool.length)]; }
+
+// Déclenchée à la création de la toute première tâche du compte.
+window.notifyFirstTaskCreated = async () => {
+  if (firstTaskCreated) return false;
+  firstTaskCreated = true;
+  await saveMotivationState();
+  showCoachMoment('✍️', pick(MSG_FIRST_TASK_CREATED));
+  return true;
+};
+
+// Déclenchée à la complétion de la toute première tâche du compte.
+window.notifyFirstTaskCompleted = async () => {
+  if (firstTaskCompleted) return false;
+  firstTaskCompleted = true;
+  await saveMotivationState();
+  showCelebrationModal('🔥', 'Première tâche terminée', pick(MSG_FIRST_TASK_DONE), null);
+  return true;
+};
+
+// Déclenchée quand une session de focus est interrompue sans être terminée.
+window.notifyTaskInterrupted = () => {
+  showCoachMoment('🌙', pick(MSG_TASK_INTERRUPTED), 'calm');
+};
 
 // ── Vérification des déblocages ───────────────────────────────────────────
 function checkThemeUnlocks() {

@@ -1,4 +1,19 @@
 function renderDashboard() {
+  const firstLaunchEl = document.getElementById('dashboard-first-launch');
+  const mainContentEl = document.getElementById('dashboard-main-content');
+  const isFirstLaunch = tasks.length === 0 && typeof firstTaskCreated !== 'undefined' && !firstTaskCreated;
+  if (firstLaunchEl && mainContentEl) {
+    firstLaunchEl.style.display = isFirstLaunch ? 'flex' : 'none';
+    mainContentEl.style.display = isFirstLaunch ? 'none' : 'block';
+    if (isFirstLaunch) {
+      const hookEl = document.getElementById('first-launch-hook');
+      if (hookEl && typeof MSG_FIRST_LAUNCH_HOOK !== 'undefined') {
+        hookEl.textContent = MSG_FIRST_LAUNCH_HOOK[Math.floor(Math.random() * MSG_FIRST_LAUNCH_HOOK.length)];
+      }
+      return; // Rien d'autre à calculer/afficher tant qu'on est sur l'écran vide.
+    }
+  }
+
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
@@ -143,6 +158,16 @@ function checkFlameDailyDecay() {
   }
 }
 
+// ── JALONS DE STREAK (3 / 7 / 30 jours) ─────────────────────────────────────
+// Couche indépendante du score cumulatif : donne un repère concret et ressenti
+// ("j'en suis à combien de jours d'affilée"), en plus de la progression continue.
+function getStreakMilestone(streak) {
+  if (streak >= 30) return { tier: 3, cls: 'milestone-3', label: '👑 30 jours — un mois de constance.' };
+  if (streak >= 7)  return { tier: 2, cls: 'milestone-2', label: '⚡ 7 jours — une vraie habitude.' };
+  if (streak >= 3)  return { tier: 1, cls: 'milestone-1', label: '🔥 3 jours — le rythme s\'installe.' };
+  return { tier: 0, cls: '', label: '' };
+}
+
 function renderFlame() {
   const card = document.getElementById('flame-card');
   const wrap = document.getElementById('flame-wrap');
@@ -213,7 +238,30 @@ function renderFlame() {
   setText('flame-pct-sub', todayTotal > 0 ? `sur ${todayTotal} tâche${todayTotal > 1 ? 's' : ''} du jour` : 'aucune tâche planifiée');
   setText('flame-lvl-val', flameScore + '%');
 
+  // Jalon de streak : anneau/label dédié, indépendant du niveau de flamme
+  const milestone = getStreakMilestone(streak);
+  wrap.classList.remove('milestone-1', 'milestone-2', 'milestone-3');
+  if (milestone.cls) wrap.classList.add(milestone.cls);
+  const milestoneLabelEl = document.getElementById('flame-milestone-label');
+  if (milestoneLabelEl) {
+    milestoneLabelEl.className = `flame-milestone-label ${milestone.cls}`.trim();
+    milestoneLabelEl.textContent = milestone.label;
+    milestoneLabelEl.style.display = milestone.tier > 0 ? 'block' : 'none';
+  }
+  updateTopbarFlameBadge(streak, milestone);
+
   if (!flameCarouselTimer) startFlameCarousel();
+}
+
+function updateTopbarFlameBadge(streak, milestone) {
+  const badge = document.getElementById('topbar-flame-badge');
+  const icon = document.getElementById('topbar-flame-icon');
+  const streakEl = document.getElementById('topbar-flame-streak');
+  if (!badge || !icon || !streakEl) return;
+  badge.classList.remove('milestone-1', 'milestone-2', 'milestone-3');
+  if (milestone.cls) badge.classList.add(milestone.cls);
+  streakEl.textContent = streak;
+  icon.style.color = flameScore < 35 ? 'var(--text3)' : (milestone.tier === 3 ? '#c084fc' : milestone.tier === 2 ? '#f97316' : milestone.tier === 1 ? '#fb923c' : 'var(--text2)');
 }
 
 function startFlameCarousel() {

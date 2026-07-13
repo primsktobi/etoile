@@ -67,8 +67,6 @@ function activateConcentrationMode() {
   if (audioPlayer && !audioPlayer.paused) {
     concentrationPrevVolume = audioPlayer.volume;
     audioPlayer.volume = targetVolPct / 100;
-    const volSlider = document.getElementById('music-volume');
-    if (volSlider) { volSlider.value = targetVolPct; paintVolumeBar(volSlider, targetVolPct); }
   }
   // Voile d'assombrissement
   if (settings.dimmingEnabled !== false) {
@@ -82,9 +80,6 @@ function activateConcentrationMode() {
 function deactivateConcentrationMode() {
   if (concentrationPrevVolume !== null && audioPlayer) {
     audioPlayer.volume = concentrationPrevVolume;
-    const volSlider = document.getElementById('music-volume');
-    const pct = Math.round(concentrationPrevVolume * 100);
-    if (volSlider) { volSlider.value = pct; paintVolumeBar(volSlider, pct); }
     concentrationPrevVolume = null;
   }
   document.getElementById('concentration-overlay').classList.remove('active');
@@ -296,6 +291,9 @@ async function finishFocusSession(completed) {
       showToast('🎉 Tâche terminée, bravo !');
     } else {
       updateData.actualHours = hoursSpent;
+      // Interruption réelle (pas un report) : réponse du coach, jamais un message
+      // système neutre, et jamais une pénalité visible sur la flamme/streak.
+      if (typeof notifyTaskInterrupted === 'function') notifyTaskInterrupted();
     }
 
     const localTask = tasks.find(t => t.id === taskId);
@@ -318,7 +316,6 @@ function focusHandleAway() {
     focusState.awayCount++;
     renderFocusUI();
     if (focusState.awayCount >= AWAY_LIMIT_COUNT) {
-      showToast('⏹️ Session terminée automatiquement (trop d\'absences)');
       finishFocusSession(false);
     } else {
       showToast(`⏸️ Session mise en pause (absence > 3 min) — ${focusState.awayCount}/${AWAY_LIMIT_COUNT}`);

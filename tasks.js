@@ -20,7 +20,7 @@ function renderTaskList() {
   filtered.forEach(t => { if (t.status==='pending' && isPastDue(t)) t._overdue=true; });
 
   if (filtered.length===0) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Aucune tâche</div><div class="empty-sub">Appuie sur + pour ajouter ta première tâche</div></div>`;
+    el.innerHTML = taskEmptyStateHTML(currentFilter, tasks.length === 0);
     return;
   }
   el.innerHTML = filtered.map(taskHTML).join('');
@@ -139,6 +139,37 @@ window.resetAdvancedFilters = () => {
 function updateAdvancedFilterButtonState() {
   const hasActive = advancedFilters.list || advancedFilters.minPriority > 0;
   document.getElementById('advanced-filter-btn').classList.toggle('active', hasActive);
+}
+
+// État vide de la liste de tâches — jamais un simple "Aucune tâche", toujours
+// une phrase du coach adaptée au contexte (aucune tâche du tout, rien fait
+// encore, ou juste rien pour ce filtre précis).
+const MSG_EMPTY_NO_ACCOUNT_TASKS = [
+  "Rien ici pour l'instant. À toi de poser la première.",
+  "Page blanche. Ce qui la remplit, c'est toi qui le décides."
+];
+const MSG_EMPTY_NOTHING_DONE = [
+  "Rien de coché encore. La première fois, ça change quelque chose.",
+  "Pas de victoire ici pour l'instant. La prochaine tâche terminée changera ça."
+];
+const MSG_EMPTY_FILTER = [
+  "Rien à afficher ici. Le champ est libre.",
+  "Vide pour l'instant. Pas pour longtemps si tu veux.",
+  "Rien de prévu ici. Ajoute quelque chose si ça a du sens."
+];
+function taskEmptyStateHTML(filter, noTasksAtAll) {
+  let icon = '📋', title, sub;
+  if (noTasksAtAll) {
+    icon = '🕯️'; title = 'Aucune tâche pour l\'instant';
+    sub = pick(MSG_EMPTY_NO_ACCOUNT_TASKS);
+  } else if (filter === 'done') {
+    title = 'Rien de terminé pour l\'instant';
+    sub = pick(MSG_EMPTY_NOTHING_DONE);
+  } else {
+    title = 'Rien ici';
+    sub = pick(MSG_EMPTY_FILTER);
+  }
+  return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
 }
 
 function hexToRgba(hex, alpha) {
@@ -313,18 +344,24 @@ window.toggleTask = async (id) => {
   renderDashboard();
   await queuePush('update', 'tasks', id, { status: newStatus });
   if (navigator.onLine) await window.queueFlush();
-  showToast(newStatus==='done' ? 'Terminée !' : 'Rouverte');
   // Mise à jour de la flamme uniquement quand on marque comme terminé
   if (newStatus === 'done' && typeof updateFlameOnTaskComplete === 'function') {
     await updateFlameOnTaskComplete(id);
   }
-  // Célébration si palier de streak atteint
-  if (newStatus === 'done' && typeof showTaskCompletionCelebration === 'function') {
-    const doneDates = new Set(tasks.filter(t => t.status === 'done' && t.date).map(t => t.date));
-    let streak = 0; let cursor = new Date();
-    if (!doneDates.has(cursor.toISOString().slice(0,10))) cursor.setDate(cursor.getDate()-1);
-    while (doneDates.has(cursor.toISOString().slice(0,10))) { streak++; cursor.setDate(cursor.getDate()-1); }
-    showTaskCompletionCelebration(streak);
+  // La toute première tâche terminée du compte a droit à son propre moment,
+  // plus marquant qu'un simple toast et distinct des célébrations de streak.
+  const wasFirstCompletion = newStatus === 'done' && typeof notifyFirstTaskCompleted === 'function'
+    ? await notifyFirstTaskCompleted() : false;
+  if (!wasFirstCompletion) {
+    showToast(newStatus==='done' ? 'Terminée !' : 'Rouverte');
+    // Célébration si palier de streak atteint (2e complétion et suivantes)
+    if (newStatus === 'done' && typeof showTaskCompletionCelebration === 'function') {
+      const doneDates = new Set(tasks.filter(t => t.status === 'done' && t.date).map(t => t.date));
+      let streak = 0; let cursor = new Date();
+      if (!doneDates.has(cursor.toISOString().slice(0,10))) cursor.setDate(cursor.getDate()-1);
+      while (doneDates.has(cursor.toISOString().slice(0,10))) { streak++; cursor.setDate(cursor.getDate()-1); }
+      showTaskCompletionCelebration(streak);
+    }
   }
   if (newStatus === 'done' && t.recurrence) await regenerateRecurringTask(t);
 };
@@ -478,6 +515,7 @@ const WEEKDAYS_FR = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','s
 function parseNaturalLanguageInput() {
   const input = document.getElementById('task-title-input');
   let text = input.value;
+  let touchedAdvanced = false;
 
   // Ne rien faire si le texte se termine par un espace — l'utilisateur
   // est en train de saisir un nouveau mot, on ne doit pas interférer.
@@ -498,6 +536,7 @@ function parseNaturalLanguageInput() {
     if (!tempTaskTags.includes(tagVal)) {
       tempTaskTags.push(tagVal);
       renderTagsPreview();
+      touchedAdvanced = true;
     }
     text = text.replace(tagMatch[0], '').trim();
   }
@@ -506,7 +545,7 @@ function parseNaturalLanguageInput() {
   const listMatch = text.match(/@(\w+)/);
   if (listMatch) {
     const listField = document.getElementById('task-list-input');
-    if (listField && !listField.value) listField.value = listMatch[1];
+    if (listField && !listField.value) { listField.value = listMatch[1]; touchedAdvanced = true; }
     text = text.replace(listMatch[0], '').trim();
   }
 
@@ -551,7 +590,10 @@ function parseNaturalLanguageInput() {
   if (/\burgent\b/i.test(text)) {
     document.querySelectorAll('.priority-opt').forEach(d => d.classList.toggle('selected', d.dataset.pri==='4'));
     text = text.replace(/\burgent\b/i, '').trim();
+    touchedAdvanced = true;
   }
+
+  if (touchedAdvanced) setTaskAdvancedOptions(true);
 
   // Nettoyage des espaces multiples — seulement si le texte a changé
   const cleaned = text.replace(/\s{2,}/g, ' ').trim();
@@ -562,6 +604,20 @@ function parseNaturalLanguageInput() {
     input.setSelectionRange(newPos, newPos);
   }
 }
+
+function setTaskAdvancedOptions(open) {
+  const wrap = document.getElementById('task-advanced-options');
+  const btn = document.getElementById('task-advanced-toggle');
+  const label = document.getElementById('task-advanced-toggle-label');
+  if (!wrap || !btn || !label) return;
+  wrap.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('open', open);
+  label.textContent = open ? 'Moins d\'options' : 'Plus d\'options';
+}
+window.toggleTaskAdvancedOptions = () => {
+  const wrap = document.getElementById('task-advanced-options');
+  setTaskAdvancedOptions(wrap.style.display === 'none');
+};
 
 window.openTaskModal = (id=null) => {
   editingTaskId = id;
@@ -612,6 +668,9 @@ window.openTaskModal = (id=null) => {
   document.getElementById('subtask-input').value = '';
   renderTagsPreview();
   renderSubtaskPreview();
+  // En édition, on affiche tout de suite les options avancées déjà utilisées
+  // pour ne pas cacher des données existantes. En création, on part replié.
+  setTaskAdvancedOptions(!!id);
   document.getElementById('task-modal').classList.add('open');
 };
 
@@ -809,7 +868,12 @@ window.saveTask = async () => {
     renderDashboard();
     await queuePush('create', 'tasks', newId, newTask);
     if (navigator.onLine) await window.queueFlush();
-    showToast('Tâche ajoutée');
+    const wasFirst = typeof notifyFirstTaskCreated === 'function' ? await notifyFirstTaskCreated() : false;
+    if (!wasFirst) {
+      showToast('Tâche ajoutée');
+    } else if (typeof maybeOfferStudentMode === 'function') {
+      setTimeout(maybeOfferStudentMode, 5000);
+    }
   }
 };
 

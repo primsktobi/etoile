@@ -248,6 +248,11 @@ window.openAppearanceModal = () => {
   renderGroupAvatarGrid();
 };
 
+window.openFeaturesModal = () => {
+  document.getElementById('features-modal').classList.add('open');
+  updateSettingsToggles();
+};
+
 window.openAccountModal = () => {
   const el = document.getElementById('current-username-display');
   if (el) el.textContent = userProfile.username ? `@${userProfile.username}` : 'Non défini';
@@ -408,6 +413,7 @@ window.openHelp = () => {
   renderHelpContent();
 };
 window.openBugReport = () => document.getElementById('bug-modal').classList.add('open');
+window.openThanksModal = () => document.getElementById('thanks-modal').classList.add('open');
 window.closeModal = (id) => document.getElementById(id).classList.remove('open');
 
 window.submitBug = async () => {

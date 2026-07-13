@@ -260,7 +260,9 @@ function runBoot() {
       // Flamme vivante — charger le score et vérifier la décroissance journalière
       if (typeof loadFlameScore === 'function') { loadFlameScore(); checkFlameDailyDecay(); }
       if (typeof loadActivityData === 'function') loadActivityData();
-      if (typeof loadMotivationState === 'function') loadMotivationState();
+      if (typeof loadMotivationState === 'function') {
+        loadMotivationState().then(() => { if (typeof renderDashboard === 'function') renderDashboard(); });
+      }
     } else {
       currentUser = null;
       resetMotivationForNewSession();
@@ -672,10 +674,62 @@ function updateSettingsToggles() {
   document.getElementById('group-notif-toggle')?.classList.toggle('on', !!settings.groupNotif);
   document.getElementById('hide-pseudo-toggle')?.classList.toggle('on', !!settings.hidePseudo);
   document.getElementById('music-feature-toggle')?.classList.toggle('on', !!settings.musicEnabled);
+  document.getElementById('student-mode-toggle')?.classList.toggle('on', !!settings.studentModeEnabled);
   document.getElementById('fullscreen-toggle')?.classList.toggle('on', !!settings.fullscreenStable);
+  // Agenda et Équipes visibles par défaut (settings.xEnabled non défini -> true)
+  document.getElementById('calendar-feature-toggle')?.classList.toggle('on', settings.calendarEnabled !== false);
+  document.getElementById('teams-feature-toggle')?.classList.toggle('on', settings.teamsEnabled !== false);
   const navMusicBtn = document.getElementById('nav-music-btn');
   if (navMusicBtn) navMusicBtn.style.display = settings.musicEnabled ? 'flex' : 'none';
+  const navStudentBtn = document.getElementById('nav-student-btn');
+  if (navStudentBtn) navStudentBtn.style.display = settings.studentModeEnabled ? 'flex' : 'none';
+  const navCalendarBtn = document.getElementById('nav-calendar-btn');
+  if (navCalendarBtn) navCalendarBtn.style.display = settings.calendarEnabled !== false ? 'flex' : 'none';
   applyFullscreenMode(settings.fullscreenStable);
+  updateTeamsVisibility();
+}
+
+// ── Mode Student : masqué tant que non activé explicitement (voir spec coach,
+//    section "Student" — évite de diluer l'identité de l'app pour les non-étudiants) ──
+window.toggleStudentMode = async () => {
+  settings.studentModeEnabled = !settings.studentModeEnabled;
+  await saveSettings();
+  if (settings.studentModeEnabled) showToast('🎓 Mode Student activé');
+};
+
+window.toggleCalendarFeature = async () => {
+  settings.calendarEnabled = settings.calendarEnabled === false ? true : false;
+  await saveSettings();
+  document.getElementById('calendar-feature-toggle')?.classList.toggle('on', settings.calendarEnabled !== false);
+  const navCalendarBtn = document.getElementById('nav-calendar-btn');
+  if (navCalendarBtn) navCalendarBtn.style.display = settings.calendarEnabled !== false ? 'flex' : 'none';
+  if (settings.calendarEnabled === false && document.getElementById('screen-calendar')?.classList.contains('active')) goTo('dashboard');
+  showToast(settings.calendarEnabled !== false ? '📅 Section Agenda affichée' : 'Section Agenda masquée');
+};
+
+window.toggleTeamsFeature = async () => {
+  settings.teamsEnabled = settings.teamsEnabled === false ? true : false;
+  await saveSettings();
+  updateTeamsVisibility();
+  if (settings.teamsEnabled === false && document.getElementById('screen-teams')?.classList.contains('active')) goTo('dashboard');
+  showToast(settings.teamsEnabled !== false ? '👥 Section Équipes affichée' : 'Section Équipes masquée');
+};
+
+// ── Équipes : masqué la première semaine (le temps de prendre ses marques seul),
+//    ET masquable manuellement via les Paramètres ──
+function updateTeamsVisibility() {
+  const btn = document.getElementById('nav-teams-btn');
+  if (!btn) return;
+  document.getElementById('teams-feature-toggle')?.classList.toggle('on', settings.teamsEnabled !== false);
+  if (settings.teamsEnabled === false) { btn.style.display = 'none'; return; }
+  const createdAt = userProfile?.createdAt;
+  let accountAgeDays = 999; // par défaut, pas de blocage si la date est inconnue
+  if (createdAt) {
+    const createdMs = typeof createdAt.toDate === 'function' ? createdAt.toDate().getTime()
+      : (createdAt.seconds ? createdAt.seconds * 1000 : new Date(createdAt).getTime());
+    if (!isNaN(createdMs)) accountAgeDays = (Date.now() - createdMs) / 86400000;
+  }
+  btn.style.display = accountAgeDays >= 7 ? 'flex' : 'none';
 }
 
 function applyFullscreenMode(enabled) {
@@ -705,6 +759,9 @@ window.goTo = (screen) => {
   document.getElementById(`screen-${screen}`)?.classList.add('active');
   document.querySelector(`[data-screen="${screen}"]`)?.classList.add('active');
   document.getElementById('fab-add').style.display = screen === 'tasks' ? 'flex' : 'none';
+  document.getElementById('topbar-music-search-icon').style.display = screen === 'music' ? 'flex' : 'none';
+  document.getElementById('music-fab').style.display = screen === 'music' ? 'flex' : 'none';
+  if (screen !== 'music') window.closeMusicSearchBar?.();
   const titles = { dashboard: 'TRIVO', tasks: '📋 Mes tâches', calendar: '📅 Agenda', teams: '👥 Équipes', settings: '⚙️ Paramètres', music: '🎵 Musique' };
   const topbarTitleEl = document.getElementById('topbar-title');
   if (screen === 'dashboard') {
@@ -718,6 +775,7 @@ window.goTo = (screen) => {
   if (screen === 'teams') renderTeams();
   if (screen === 'settings') { renderUserUI(); loadConcentrationSettingsUI(); }
   if (screen === 'music') loadMusicScreen();
+  window.updateMusicBottomBarVisibility?.();
 };
 
 // ══════════════════════════════════════════════════════════

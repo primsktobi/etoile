@@ -38,7 +38,9 @@ const SUBJECT_STATUS = {
 // ── Navigation ────────────────────────────────────────────────────────────────
 window.goToStudent = async () => {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('screen-student').classList.add('active');
+  document.querySelector('[data-screen="student"]')?.classList.add('active');
   document.getElementById('fab-add').style.display = 'none';
   document.getElementById('topbar-title').textContent = '🎓 Étudiant';
   await loadStudentData();
@@ -974,3 +976,18 @@ function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Onboarding : proposition explicite du mode Student ──────────────────────
+// Déclenché une seule fois, peu après la première tâche créée (jamais sur
+// l'écran vide du tout premier lancement — un seul CTA à la fois, cf. spec).
+window.maybeOfferStudentMode = () => {
+  if (settings.studentModeEnabled || settings.studentPromptShown) return;
+  settings.studentPromptShown = true;
+  saveSettings();
+  showCelebrationModal(
+    '🎓',
+    'Tu es étudiant ?',
+    "Active le mode Student : emploi du temps, matières et sessions de révision générées automatiquement. Activable à tout moment depuis Paramètres.",
+    () => { window.toggleStudentMode(); }
+  );
+};

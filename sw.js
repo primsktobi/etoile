@@ -1,20 +1,28 @@
-const CACHE_NAME = 'TRIVO v7.11';
+const CACHE_NAME = 'TRIVO v8.4';
 const ASSETS = [
   '/',
   '/index.html',
+  '/style.css',
   '/firebase-bridge.js',
   '/core.js',
+  '/sync.js',
   '/dashboard.js',
   '/tasks.js',
   '/memos.js',
   '/calendar.js',
   '/teams.js',
+  '/student.js',
   '/settings.js',
   '/notifications.js',
   '/music.js',
+  '/lib/jsmediatags.min.js',
   '/focus.js',
   '/manifest.json'
 ];
+// Chemins du shell (app statique) -> chargement cache-first, jamais bloqué par le réseau.
+const SHELL_PATHS = new Set(ASSETS.map(a => a === '/' ? '/' : a));
+
+const NETWORK_TIMEOUT_MS = 1500;
 
 // Install
 self.addEventListener('install', e => {
@@ -34,22 +42,65 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch (offline first)
+// Récupère une ressource sur le réseau avec un délai maximum : si le réseau
+// ne répond pas sous NETWORK_TIMEOUT_MS (ex: wifi lent/instable), on bascule
+// immédiatement sur le cache au lieu d'attendre indéfiniment une réponse qui
+// ne viendra peut-être jamais (contrairement à une vraie erreur réseau, un
+// fetch lent ne rejette jamais tout seul).
+function networkWithTimeout(request) {
+  return new Promise(resolve => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      caches.match(request).then(cached => resolve(cached || fetch(request).catch(() => undefined)));
+    }, NETWORK_TIMEOUT_MS);
+
+    fetch(request).then(res => {
+      const clone = res.clone();
+      caches.open(CACHE_NAME).then(c => c.put(request, clone)).catch(() => {});
+      if (settled) return; // le timeout a déjà résolu avec le cache, trop tard
+      settled = true;
+      clearTimeout(timer);
+      resolve(res);
+    }).catch(() => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      caches.match(request).then(cached => resolve(cached));
+    });
+  });
+}
+
+// Fetch
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // On ignore les requêtes qui ne sont pas http/https (ex: chrome-extension://),
   // car l'API Cache du navigateur ne les supporte pas et lève une erreur.
   if (!e.request.url.startsWith('http')) return;
 
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(e.request, clone)).catch(() => {});
-        return res;
+  const url = new URL(e.request.url);
+  const isShell = url.origin === self.location.origin && SHELL_PATHS.has(url.pathname);
+
+  if (isShell) {
+    // Cache-first : affichage instantané quelle que soit la vitesse du réseau.
+    // Le cache est rafraîchi en arrière-plan (stale-while-revalidate), sans
+    // jamais bloquer le rendu sur la réponse réseau.
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const refresh = fetch(e.request).then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone)).catch(() => {});
+          return res;
+        }).catch(() => cached);
+        return cached || refresh;
       })
-      .catch(() => caches.match(e.request))
-  );
+    );
+    return;
+  }
+
+  // Hors shell (CDN Firebase, appels API…) : réseau avec timeout de secours.
+  e.respondWith(networkWithTimeout(e.request));
 });
 
 // Push notifications
