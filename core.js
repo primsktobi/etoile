@@ -257,8 +257,13 @@ function runBoot() {
       resetMotivationForNewSession();
       resetGreetingForNewSession();
       setTimeout(maybeShowMotivationQuote, 600);
-      // Flamme vivante — charger le score et vérifier la décroissance journalière
-      if (typeof loadFlameScore === 'function') { loadFlameScore(); checkFlameDailyDecay(); }
+      // Flamme vivante — charger le score et vérifier la décroissance journalière.
+      // IMPORTANT : on attend le chargement du vrai score avant de calculer la
+      // décroissance, sinon celle-ci se base sur la valeur par défaut (35) au
+      // lieu du score réel et écrase la progression à chaque ouverture de l'app.
+      if (typeof loadFlameScore === 'function') {
+        loadFlameScore().then(() => { if (typeof checkFlameDailyDecay === 'function') checkFlameDailyDecay(); });
+      }
       if (typeof loadActivityData === 'function') loadActivityData();
       if (typeof loadMotivationState === 'function') {
         loadMotivationState().then(() => { if (typeof renderDashboard === 'function') renderDashboard(); });

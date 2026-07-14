@@ -138,7 +138,7 @@ async function loadMusicScreen() {
 
 const MUSIC_SORT_MODES = ['recent', 'name', 'liked'];
 const MUSIC_SORT_ICONS = {
-  recent: '<i class="fa-solid fa-clock"></i>',
+  recent: '<i class="fa-solid fa-circle"></i>',
   name: 'A→Z',
   liked: '🤍',
 };
@@ -419,8 +419,8 @@ function setNowPlaying(title, sub, coverIndex, coverBase64) {
   // Reset visuel de la progression tant que la nouvelle durée n'est pas connue
   const ring = document.getElementById('topbar-music-ring-fill');
   if (ring) ring.style.strokeDashoffset = MUSIC_RING_CIRCUMFERENCE;
-  const fill = document.getElementById('music-bottom-progress-fill');
-  if (fill) fill.style.width = '0%';
+  const seek = document.getElementById('music-bottom-seek');
+  if (seek) seek.value = 0;
   setText('music-bottom-elapsed', '0:00');
   setText('music-bottom-duration', '0:00');
 
@@ -435,8 +435,38 @@ function updateMusicBottomBarVisibility() {
   const onMusicScreen = document.getElementById('screen-music')?.classList.contains('active');
   const hasTrack = currentTrackIndex !== -1;
   bar.classList.toggle('show', !!(onMusicScreen && hasTrack));
+  if (!onMusicScreen || !hasTrack) { bar.classList.remove('expanded'); clearTimeout(bottomBarCollapseTimer); }
 }
 window.updateMusicBottomBarVisibility = updateMusicBottomBarVisibility;
+
+// Clic/interaction sur la barre du bas = elle s'agrandit (précédent, pause, suivant,
+// stop, écouter plusieurs) puis se replie toute seule après 5s sans y toucher.
+let bottomBarCollapseTimer = null;
+window.musicBottomBarInteract = () => {
+  const bar = document.getElementById('music-bottom-bar');
+  if (!bar) return;
+  bar.classList.add('expanded');
+  clearTimeout(bottomBarCollapseTimer);
+  bottomBarCollapseTimer = setTimeout(() => bar.classList.remove('expanded'), 5000);
+};
+
+// "Écouter plusieurs" : referme la barre et ramène sur la liste des morceaux pour en choisir un autre.
+window.openMusicQueue = () => {
+  document.getElementById('music-bottom-bar')?.classList.remove('expanded');
+  clearTimeout(bottomBarCollapseTimer);
+  document.getElementById('screen-music')?.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast?.('🎵 Choisis un autre morceau dans la liste');
+};
+
+// La ligne de progression est un vrai curseur : on peut avancer/reculer la musique en la faisant glisser.
+document.addEventListener('input', e => {
+  if (e.target.id !== 'music-bottom-seek') return;
+  const player = getAudioPlayer();
+  if (player.duration && isFinite(player.duration)) {
+    player.currentTime = (e.target.value / 100) * player.duration;
+  }
+  musicBottomBarInteract();
+});
 
 let miniPlayerTimer = null;
 window.toggleMiniPlayer = () => {
@@ -480,8 +510,11 @@ window.musicTogglePlay = () => {
 function updatePlayButton(playing) {
   const miniBtn = document.getElementById('mini-play-btn');
   const bottomBtn = document.getElementById('music-bottom-play-btn');
-  if (miniBtn) miniBtn.innerHTML = playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
-  if (bottomBtn) bottomBtn.innerHTML = playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+  const expandBtn = document.getElementById('music-bottom-expand-play-btn');
+  const icon = playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+  if (miniBtn) miniBtn.innerHTML = icon;
+  if (bottomBtn) bottomBtn.innerHTML = icon;
+  if (expandBtn) expandBtn.innerHTML = icon;
 }
 
 window.musicNext = () => {
@@ -519,8 +552,8 @@ function updateSeekBar() {
   const ring = document.getElementById('topbar-music-ring-fill');
   if (ring) ring.style.strokeDashoffset = MUSIC_RING_CIRCUMFERENCE * (1 - pct / 100);
 
-  const fill = document.getElementById('music-bottom-progress-fill');
-  if (fill) fill.style.width = pct + '%';
+  const seek = document.getElementById('music-bottom-seek');
+  if (seek && document.activeElement !== seek) seek.value = pct;
   setText('music-bottom-elapsed', formatTime(player.currentTime));
   setText('music-bottom-duration', formatTime(player.duration));
 }

@@ -13,6 +13,12 @@
       --nav-h: 70px;
       --safe-b: env(safe-area-inset-bottom, 0px);
       --safe-t: env(safe-area-inset-top, 0px);
+
+      /* Inversées par rapport au thème : blanc sur fond sombre, noir sur fond clair.
+         Utilisées pour la section "Cette semaine" du dashboard. */
+      --invert-bg: #ffffff;
+      --invert-text: #0a1628;
+      --invert-text2: #5b6b82;
     }
 
     [data-theme="dark"] {
@@ -36,6 +42,9 @@
       --text2: #4a6080;
       --text3: #8fa3c0;
       --nav-bg: #ffffffee;
+      --invert-bg: #10182c;
+      --invert-text: #ffffff;
+      --invert-text2: #b7c3dc;
     }
 
     /* ── THÈME COSMOS (débloqué : semaine parfaite) ─────────────────── */
@@ -906,6 +915,66 @@
     .empty-title { font-size: 16px; font-weight: 700; color: var(--text2); }
     .empty-sub { font-size: 13px; text-align: center; line-height: 1.5; }
 
+    /* ─── TÂCHES : ÉTAT VIDE "HERO" (compte sans aucune tâche) ─── */
+    .task-empty-hero { padding: 44px 24px 8px; }
+    .task-empty-avatar-wrap { position: relative; width: 108px; height: 108px; margin-bottom: 24px; }
+    .task-empty-avatar {
+      width: 108px; height: 108px; border-radius: 50%; overflow: hidden;
+      background: var(--blue); display: flex; align-items: center; justify-content: center;
+      font-size: 40px; font-weight: 700; color: #fff; box-shadow: 0 14px 32px rgba(0,0,0,0.35);
+    }
+    .task-empty-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .task-empty-badge {
+      position: absolute; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35); color: #fff;
+    }
+    .task-empty-badge.b1 {
+      top: -6px; left: -16px; width: 34px; height: 34px; border-radius: 11px;
+      background: var(--card); border: 1px solid var(--border); color: var(--text2);
+      font-size: 14px; transform: rotate(-10deg);
+    }
+    .task-empty-badge.b2 {
+      top: -8px; right: -14px; width: 42px; height: 42px; border-radius: 50%;
+      background: #22c55e; font-size: 17px; animation: taskEmptyFloat 3.4s ease-in-out infinite;
+    }
+    .task-empty-badge.b3 {
+      bottom: -4px; right: -18px; width: 36px; height: 36px; border-radius: 50%;
+      background: var(--accent); font-size: 14px;
+    }
+    .task-empty-sparkle {
+      position: absolute; top: 40%; left: -26px; color: var(--text2); font-size: 16px;
+      animation: taskEmptyFloat 3.4s ease-in-out infinite 0.4s;
+    }
+    @keyframes taskEmptyFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .task-empty-cta {
+      display: flex; align-items: center; gap: 8px; margin-top: 18px; padding: 14px 26px;
+      border-radius: 16px; border: none; cursor: pointer; background: var(--accent); color: #fff;
+      font-size: 14.5px; font-weight: 800; box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+    .task-empty-cta:active { transform: scale(0.97); }
+
+    /* ─── "MA JOURNÉE" VIDE — carte coach chaleureuse, légèrement flottante ─── */
+    .my-day-empty-coach {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 20px; border-radius: 20px;
+      background: var(--card); border: 1px solid var(--border);
+      box-shadow: 0 10px 34px rgba(255,255,255,0.07), 0 2px 12px rgba(0,0,0,0.18);
+    }
+    .my-day-empty-coach-icon {
+      font-size: 30px; flex-shrink: 0; line-height: 1;
+      animation: myDayEmptyFloat 3.2s ease-in-out infinite;
+    }
+    .my-day-empty-coach-text { flex: 1; min-width: 0; }
+    .my-day-empty-coach-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+    .my-day-empty-coach-sub { font-size: 12.5px; color: var(--text3); line-height: 1.45; }
+    @keyframes myDayEmptyFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
     /* ─── PREMIER LANCEMENT (écran vide coach) ─── */
     #dashboard-first-launch {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1122,22 +1191,80 @@
       #bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); }
       .fab { right: calc(50% - 240px + 16px); }
     }
+/* ══════════════════════════════════════════════════════════════════
+       RESPONSIVE TABLETTE & GRAND ÉCRAN
+       Tout ce qui suit est additif à partir de 768px : le rendu téléphone
+       (règles ci-dessus, max-width:767px) n'est jamais modifié ni écrasé.
+    ══════════════════════════════════════════════════════════════════ */
+
+    /* ─── TABLETTE (768–1023px) : Galaxy Z Fold2 déplié, Galaxy Tab S7
+           portrait, iPad portrait ─── */
     @media (min-width: 768px) {
-      .screen { max-width: 700px; margin: 0 auto; padding-left: 28px; padding-right: 28px; }
-      #bottom-nav { max-width: 700px; left: 50%; transform: translateX(-50%); }
-      .fab { right: calc(50% - 350px + 24px); }
-      .team-chat-modal { max-width: 700px; left: 50%; transform: translateX(-50%); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+      .screen { width: 100%; max-width: 720px; margin: 0 auto; padding-left: 28px; padding-right: 28px; }
+      #bottom-nav { width: 100%; max-width: 720px; left: 50%; right: auto; transform: translateX(-50%); }
+      #topbar { width: 100%; max-width: 720px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+      .fab { right: calc(50% - 360px + 24px); }
+      .team-chat-modal { width: 100%; max-width: 720px; left: 50%; right: auto; transform: translateX(-50%); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
       .stats-grid-3 { grid-template-columns: repeat(3, 1fr); }
-      #topbar { max-width: 700px; left: 50%; transform: translateX(-50%); }
+
+      /* Topbar : un peu plus d'air entre les éléments (flamme, musique, focus, avatar) */
+      .topbar-title { font-size: 19px; }
+      .topbar-actions { gap: 12px; }
+
+      /* Footbar : les onglets se répartissent sur toute la largeur au lieu
+         des 20% fixes pensés pour un écran de téléphone (donc plus de scroll
+         nécessaire dès que 5, 6 ou 7 onglets sont actifs) */
+      .nav-item { flex: 1 1 0; min-width: 0; padding: 12px 0; }
+      .nav-icon { font-size: 23px; }
+      .nav-label { font-size: 11px; }
+
+      /* Tâches : grille 2 colonnes au lieu d'une pile verticale unique */
+      #task-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: start; }
+      #task-list .task-card-premium,
+      #task-list .task-card-party { margin-bottom: 0; }
+      #task-list .empty-state { grid-column: 1 / -1; }
+
+      /* Paramètres : sections réparties sur 2 colonnes (masonry) */
+      #screen-settings { column-count: 2; column-gap: 20px; }
+      #screen-settings .settings-section { break-inside: avoid; }
+
+      /* Modales génériques (ajout tâche, réglages, etc.) : dialogue centré
+         plutôt que feuille collée en bas façon téléphone */
+      .modal-overlay { align-items: center; justify-content: center; padding: 24px; }
+      .modal { max-width: 480px; border-radius: 24px; max-height: 85dvh; animation: none; }
+      .modal-handle { display: none; }
     }
+
+    /* ─── GRAND ÉCRAN (≥1024px) : iPad landscape, Galaxy Tab S7 landscape,
+           ordinateur portable/de bureau ─── */
     @media (min-width: 1024px) {
       body { display: flex; justify-content: center; }
-      #app { max-width: 800px; box-shadow: 0 0 40px rgba(0,0,0,0.3); }
-      .screen { max-width: 800px; }
-      #bottom-nav { max-width: 800px; }
-      #topbar { max-width: 800px; }
-      .team-chat-modal { max-width: 800px; }
-      .fab { right: calc(50% - 400px + 24px); }
+      #app { width: 100%; max-width: 1080px; box-shadow: 0 0 40px rgba(0,0,0,0.3); }
+      .screen { max-width: 1080px; padding-left: 40px; padding-right: 40px; }
+      #bottom-nav { max-width: 1080px; }
+      #topbar { max-width: 1080px; padding-left: 40px; padding-right: 40px; }
+      .team-chat-modal { max-width: 1080px; }
+      .fab { right: calc(50% - 540px + 32px); }
+
+      /* Tâches : 3 colonnes, plus de place pour respirer */
+      #task-list { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+      /* Réglages : jusqu'à 3 colonnes si la hauteur des sections le permet */
+      #screen-settings { column-count: 3; }
+
+      /* Footbar : cibles plus confortables + retour visuel au survol souris */
+      .nav-item { padding: 14px 0; cursor: pointer; }
+      .nav-item:not(.active):hover { color: var(--blue-light); }
+    }
+
+    /* ─── TRÈS GRAND ÉCRAN (≥1440px) ─── */
+    @media (min-width: 1440px) {
+      #app { max-width: 1280px; }
+      .screen { max-width: 1280px; }
+      #bottom-nav { max-width: 1280px; }
+      #topbar { max-width: 1280px; }
+      .team-chat-modal { max-width: 1280px; }
+      .fab { right: calc(50% - 640px + 32px); }
     }
 
     /* ─── MUSIQUE (legacy, gardé pour mini-lecteur topbar) ─── */
@@ -1260,8 +1387,32 @@
       font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .music-bottom-bar-progress-row { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--text3); font-variant-numeric: tabular-nums; }
-    .music-bottom-progress-track { flex: 1; height: 3px; border-radius: 2px; background: var(--bg3); overflow: hidden; }
-    .music-bottom-progress-fill { height: 100%; width: 0%; background: var(--blue); border-radius: 2px; transition: width 0.2s linear; }
+    .music-bottom-seek {
+      flex: 1; width: auto; height: 4px; margin: 0;
+      -webkit-appearance: none; appearance: none; background: var(--bg3); border-radius: 4px; outline: none;
+    }
+    .music-bottom-seek::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%;
+      background: #fff; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .music-bottom-seek::-moz-range-thumb {
+      width: 11px; height: 11px; border-radius: 50%; background: #fff; border: none; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .music-bottom-seek::-webkit-slider-runnable-track { background: transparent; }
+
+    /* Rangée de contrôles révélée quand la barre s'étend (clic, se referme après 5s d'inactivité) */
+    .music-bottom-bar-controls {
+      display: flex; align-items: center; justify-content: space-around;
+      max-height: 0; overflow: hidden; opacity: 0; padding-top: 0;
+      transition: max-height 0.28s ease, opacity 0.2s ease, padding-top 0.28s ease;
+    }
+    .music-bottom-bar.expanded .music-bottom-bar-controls {
+      max-height: 64px; opacity: 1; padding-top: 6px;
+    }
+    .music-bottom-bar-controls .music-ctrl-btn { width: 38px; height: 38px; font-size: 14px; }
+    .music-bottom-bar-controls .music-play-btn { width: 46px; height: 46px; font-size: 16px; }
+    .music-bottom-bar-controls .music-ctrl-btn:active { transform: scale(0.9); }
 
     .music-track-item {
       display: flex; align-items: center; gap: 12px; padding: 10px 12px;
@@ -1466,6 +1617,33 @@
     }
     .dash-section-label span { font-size: 13px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
     .dash-see-all { font-size: 12px; font-weight: 600; color: var(--blue); display: flex; align-items: center; gap: 4px; }
+
+    /* ─── "CETTE SEMAINE, JOUR PAR JOUR" — cartes rondes façon post-it ─── */
+    .week-days-scroll {
+      display: flex; gap: 16px; overflow-x: auto; padding: 8px 4px 16px;
+      margin-bottom: 4px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    }
+    .week-days-scroll::-webkit-scrollbar { display: none; }
+    .week-day-card { position: relative; flex: 0 0 auto; width: 106px; height: 106px; scroll-snap-align: start; }
+    .week-day-ring {
+      width: 100%; height: 100%; border-radius: 50%; padding: 5px; box-sizing: border-box;
+      background: conic-gradient(var(--day-accent) 0deg 275deg, transparent 275deg 360deg);
+    }
+    .week-day-card.is-today .week-day-ring { background: var(--day-accent); }
+    .week-day-disc {
+      width: 100%; height: 100%; border-radius: 50%; background: var(--invert-bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.28);
+    }
+    .week-day-name { font-size: 12px; font-weight: 800; color: var(--invert-text); margin-bottom: 4px; }
+    .week-day-info { display: flex; flex-direction: column; gap: 1px; }
+    .week-day-info-line { font-size: 9px; font-weight: 600; color: var(--invert-text2); line-height: 1.4; }
+    .week-day-clip {
+      position: absolute; top: -5px; left: 50%; transform: translateX(-50%) rotate(26deg);
+      width: 22px; height: 22px; border-radius: 6px; background: var(--card); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text2);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    }
 
     /* ─── Cards de tâches premium ─── */
     .dash-task-card {

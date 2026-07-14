@@ -144,9 +144,11 @@ function updateAdvancedFilterButtonState() {
 // État vide de la liste de tâches — jamais un simple "Aucune tâche", toujours
 // une phrase du coach adaptée au contexte (aucune tâche du tout, rien fait
 // encore, ou juste rien pour ce filtre précis).
-const MSG_EMPTY_NO_ACCOUNT_TASKS = [
-  "Rien ici pour l'instant. À toi de poser la première.",
-  "Page blanche. Ce qui la remplit, c'est toi qui le décides."
+const MSG_EMPTY_HERO = [
+  { title: "Une nouvelle page t'attend", sub: "Commence par une tâche, aussi petite soit-elle." },
+  { title: "Prêt·e à démarrer ?", sub: "Ajoute ta première tâche et donne le ton à ta journée." },
+  { title: "Rien pour l'instant, et c'est parfait", sub: "C'est le meilleur moment pour poser ce que tu veux accomplir." },
+  { title: "À toi de jouer", sub: "Une tâche à la fois. On commence par laquelle ?" }
 ];
 const MSG_EMPTY_NOTHING_DONE = [
   "Rien de coché encore. La première fois, ça change quelque chose.",
@@ -157,19 +159,42 @@ const MSG_EMPTY_FILTER = [
   "Vide pour l'instant. Pas pour longtemps si tu veux.",
   "Rien de prévu ici. Ajoute quelque chose si ça a du sens."
 ];
+
+// Avatar réel de l'utilisateur (photo de profil si dispo, sinon initiales) —
+// même logique que renderUserUI() dans core.js.
+function taskEmptyHeroAvatarHTML() {
+  const pseudo = (typeof userProfile !== 'undefined' && userProfile.pseudo) || currentUser?.displayName || '?';
+  const initials = pseudo.slice(0, 2).toUpperCase();
+  const photoURL = (typeof userProfile !== 'undefined' && userProfile.photoURL) || currentUser?.photoURL || '';
+  return photoURL ? `<img src="${photoURL}" alt="">` : initials;
+}
+
 function taskEmptyStateHTML(filter, noTasksAtAll) {
-  let icon = '📋', title, sub;
   if (noTasksAtAll) {
-    icon = '🕯️'; title = 'Aucune tâche pour l\'instant';
-    sub = pick(MSG_EMPTY_NO_ACCOUNT_TASKS);
-  } else if (filter === 'done') {
+    const msg = pick(MSG_EMPTY_HERO);
+    return `
+      <div class="empty-state task-empty-hero">
+        <div class="task-empty-avatar-wrap">
+          <div class="task-empty-badge b1"><i class="fa-solid fa-list-check"></i></div>
+          <div class="task-empty-avatar">${taskEmptyHeroAvatarHTML()}</div>
+          <div class="task-empty-badge b2"><i class="fa-solid fa-bolt"></i></div>
+          <div class="task-empty-badge b3"><i class="fa-solid fa-star"></i></div>
+          <div class="task-empty-sparkle"><i class="fa-solid fa-sparkles"></i></div>
+        </div>
+        <div class="empty-title">${msg.title}</div>
+        <div class="empty-sub">${msg.sub}</div>
+        <button class="task-empty-cta" onclick="openTaskModal()"><i class="fa-solid fa-plus"></i> Ajouter une tâche</button>
+      </div>`;
+  }
+  let title, sub;
+  if (filter === 'done') {
     title = 'Rien de terminé pour l\'instant';
     sub = pick(MSG_EMPTY_NOTHING_DONE);
   } else {
     title = 'Rien ici';
     sub = pick(MSG_EMPTY_FILTER);
   }
-  return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
+  return `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
 }
 
 function hexToRgba(hex, alpha) {

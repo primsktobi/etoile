@@ -338,6 +338,10 @@
       </div>
     </div>
 
+    <!-- SEMAINE — une carte ronde par jour (cours / tâches / réussites) -->
+    <div class="dash-section-label"><span>Cette semaine, jour par jour</span></div>
+    <div class="week-days-scroll" id="week-days-scroll"></div>
+
     <!-- ACTIVITÉ — mini courbe carousel -->
     <div id="activity-dashboard-wrap" style="display:none;"></div>
 
@@ -671,19 +675,26 @@
   </div>
 
   <!-- Barre persistante au-dessus du footbar (écran Musique uniquement, morceau chargé) -->
-  <div class="music-bottom-bar" id="music-bottom-bar" onclick="toggleMiniPlayer()">
+  <div class="music-bottom-bar" id="music-bottom-bar" onclick="musicBottomBarInteract()">
     <div class="music-bottom-bar-top">
       <div class="music-bottom-bar-cover" id="music-bottom-cover"><i class="fa-solid fa-music"></i></div>
       <div class="music-bottom-bar-info">
         <div class="music-bottom-bar-title" id="music-bottom-title">—</div>
         <div class="music-bottom-bar-sub" id="music-bottom-sub">—</div>
       </div>
-      <button class="music-bottom-bar-play" id="music-bottom-play-btn" onclick="event.stopPropagation();musicTogglePlay()"><i class="fa-solid fa-pause"></i></button>
+      <button class="music-bottom-bar-play" id="music-bottom-play-btn" onclick="event.stopPropagation();musicTogglePlay();musicBottomBarInteract();"><i class="fa-solid fa-pause"></i></button>
     </div>
     <div class="music-bottom-bar-progress-row">
       <span id="music-bottom-elapsed">0:00</span>
-      <div class="music-bottom-progress-track"><div class="music-bottom-progress-fill" id="music-bottom-progress-fill"></div></div>
+      <input type="range" id="music-bottom-seek" class="music-seek music-bottom-seek" min="0" max="100" value="0" step="0.1" onclick="event.stopPropagation();musicBottomBarInteract();" />
       <span id="music-bottom-duration">0:00</span>
+    </div>
+    <div class="music-bottom-bar-controls" id="music-bottom-bar-controls">
+      <button class="music-ctrl-btn" onclick="event.stopPropagation();musicPrev();musicBottomBarInteract();" title="Précédent"><i class="fa-solid fa-backward-step"></i></button>
+      <button class="music-ctrl-btn music-play-btn" id="music-bottom-expand-play-btn" onclick="event.stopPropagation();musicTogglePlay();musicBottomBarInteract();" title="Lecture / Pause"><i class="fa-solid fa-pause"></i></button>
+      <button class="music-ctrl-btn" onclick="event.stopPropagation();musicNext();musicBottomBarInteract();" title="Suivant"><i class="fa-solid fa-forward-step"></i></button>
+      <button class="music-ctrl-btn" onclick="event.stopPropagation();stopMusicCompletely();" title="Stop"><i class="fa-solid fa-stop"></i></button>
+      <button class="music-ctrl-btn" onclick="event.stopPropagation();openMusicQueue();" title="Écouter plusieurs"><i class="fa-solid fa-list-ul"></i></button>
     </div>
   </div>
 
@@ -794,7 +805,7 @@
     </div>
 
     <div style="text-align:center;padding:24px 0 8px;color:var(--text3);font-size:12px;">
-      TRIVO v8.4
+      TRIVO v8.8
     </div>
   </div>
 

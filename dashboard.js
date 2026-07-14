@@ -63,6 +63,7 @@ function renderDashboard() {
   renderGreeting();
   renderMyDay();
   renderUpcomingTasks();
+  renderWeekDays();
   renderStreak();
   renderHabits();
   if (typeof renderCoachMessage === 'function') renderCoachMessage();
@@ -147,15 +148,26 @@ async function updateFlameOnTaskComplete(taskId) {
   spawnFlameParticles();
 }
 
-function checkFlameDailyDecay() {
+async function checkFlameDailyDecay() {
+  // Ne vérifier qu'une seule fois par jour : sans ce garde-fou, rouvrir l'app
+  // plusieurs fois dans la même journée réappliquait -5 à chaque fois.
+  const today = fmtDate(new Date());
+  const lastCheck = await idbGet('prefs', 'flameLastDecayCheck');
+  if (lastCheck?.value === today) return;
+
   // Vérifie si hier aucune tâche n'a été complétée → diminue la flamme
-  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  const yd = fmtDate(yesterday);
-  const hadActivity = tasks.some(t => t.date === yd && t.status === 'done');
-  if (!hadActivity) {
-    flameScore = Math.max(10, flameScore - 5);
-    saveFlameScore();
+  // (jamais lors du tout premier lancement, avant tout historique)
+  if (lastCheck?.value) {
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const yd = fmtDate(yesterday);
+    const hadActivity = tasks.some(t => t.date === yd && t.status === 'done');
+    if (!hadActivity) {
+      flameScore = Math.max(10, flameScore - 5);
+      await saveFlameScore();
+      renderFlame();
+    }
   }
+  await idbPut('prefs', { key: 'flameLastDecayCheck', value: today });
 }
 
 // ── JALONS DE STREAK (3 / 7 / 30 jours) ─────────────────────────────────────
@@ -422,6 +434,16 @@ async function loadMyDaySelection() {
   }
 }
 
+// Journée sans aucune tâche choisie dans "Ma journée" — jamais un simple
+// "Aucune tâche" froid : un message chaleureux façon coach, avec une tasse
+// de thé, qui invite au calme plutôt qu'à culpabiliser.
+const MSG_MYDAY_EMPTY = [
+  "Profite de ce moment de calme, ou ajoute une tâche quand tu es prêt·e.",
+  "Parfait pour souffler un peu — ou pour démarrer quelque chose qui te tient à cœur.",
+  "Ce vide, c'est aussi l'occasion de choisir ce qui compte vraiment pour toi aujourd'hui.",
+  "Rien ne presse. Quand tu veux poser une tâche, elle apparaîtra ici."
+];
+
 function renderMyDay() {
   const el = document.getElementById('my-day-list');
   if (!el) return;
@@ -430,7 +452,14 @@ function renderMyDay() {
     .filter(t => t && t.status !== 'deleted');
 
   if (selectedTasks.length === 0) {
-    el.innerHTML = '';
+    el.innerHTML = `
+      <div class="my-day-empty-coach">
+        <div class="my-day-empty-coach-icon">🍵</div>
+        <div class="my-day-empty-coach-text">
+          <div class="my-day-empty-coach-title">Ta journée est libre</div>
+          <div class="my-day-empty-coach-sub">${pick(MSG_MYDAY_EMPTY)}</div>
+        </div>
+      </div>`;
     return;
   }
   el.innerHTML = selectedTasks.map(t => `
@@ -475,6 +504,58 @@ window.saveMyDaySelection = async () => {
 };
 
 // ── Cards de tâches premium pour le Dashboard ──
+// ─── "CETTE SEMAINE, JOUR PAR JOUR" — une carte ronde façon post-it par jour,
+// avec le nombre de cours (si le mode Student est actif), de tâches du jour
+// et de tâches réussies. Le disque central s'inverse avec le thème (blanc sur
+// fond sombre, noir sur fond clair) ; la couleur de l'anneau reste fixe par jour.
+const WEEK_DAY_LABEL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const WEEK_DAY_COLOR = ['#f59e0b','#3b82f6','#f472b6','#2dd4bf','#1e3a8a','#fb923c','#60a5fa'];
+
+function renderWeekDays() {
+  const el = document.getElementById('week-days-scroll');
+  if (!el) return;
+
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  weekStart.setHours(0, 0, 0, 0);
+  const todayStr = fmtDate(now);
+  const studentOn = typeof settings !== 'undefined' && !!settings.studentModeEnabled
+    && typeof studentSchedule !== 'undefined' && typeof DAYS_EN !== 'undefined';
+
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(weekStart); day.setDate(weekStart.getDate() + i);
+    const ds = fmtDate(day);
+    const dayTasks = tasks.filter(t => t.date === ds && t.status !== 'deleted');
+    const nt = dayTasks.length;
+    const tr = dayTasks.filter(t => t.status === 'done').length;
+
+    let coursLine = '';
+    if (studentOn) {
+      const nc = (studentSchedule[DAYS_EN[i]] || []).filter(b => b.type === 'cours').length;
+      coursLine = `<div class="week-day-info-line">Cours : ${nc}</div>`;
+    }
+
+    const isToday = ds === todayStr;
+    html += `
+      <div class="week-day-card ${isToday ? 'is-today' : ''}" style="--day-accent:${WEEK_DAY_COLOR[i]};">
+        <div class="week-day-ring">
+          <div class="week-day-disc">
+            <div class="week-day-name">${WEEK_DAY_LABEL[i]}</div>
+            <div class="week-day-info">
+              ${coursLine}
+              <div class="week-day-info-line">NT : ${nt}</div>
+              <div class="week-day-info-line">TR : ${tr}</div>
+            </div>
+          </div>
+        </div>
+        <div class="week-day-clip"><i class="fa-solid fa-paperclip"></i></div>
+      </div>`;
+  }
+  el.innerHTML = html;
+}
+
 function renderUpcomingTasks() {
   const el = document.getElementById('upcoming-tasks-list');
   const wrap = document.getElementById('upcoming-wrap');
