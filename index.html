@@ -127,13 +127,7 @@
     </div>
   </div>
 
-  <!-- BARRE DE RECHERCHE MUSIQUE (descend depuis la topbar, écran Musique uniquement) -->
-  <div class="music-topbar-search" id="music-topbar-search">
-    <div class="music-search-wrap" style="margin-bottom:0;">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" class="music-search-input" id="music-topbar-search-input" placeholder="Rechercher un titre ou un artiste" oninput="onMusicSearchInput(this.value)" />
-    </div>
-  </div>
+  
 
   <!-- MINI LECTEUR (dropdown depuis la topbar) -->
   <div class="mini-player-drop" id="mini-player-drop">
@@ -394,14 +388,7 @@
     <div id="onboarding-steps-wrap" style="width:100%;max-width:360px;"></div>
   </div>
 
-  <!-- PARAMÈTRES ÉTUDIANT (slide depuis droite) -->
-  <div class="student-settings-panel" id="student-settings-panel">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-      <button class="advanced-filter-btn" onclick="closeStudentSettings()"><i class="fa-solid fa-arrow-left"></i></button>
-      <div style="font-size:18px;font-weight:900;color:var(--text);">Paramètres étudiant</div>
-    </div>
-    <div id="student-settings-content"></div>
-  </div>
+  
 
   <!-- MODAL AJOUT / MODIFICATION COURS -->
   <div class="modal-overlay" id="student-course-modal">
@@ -461,6 +448,14 @@
         style="flex:1;padding:9px;border-radius:11px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text3);transition:all 0.2s;">
         <i class="fa-solid fa-book-open"></i> Matières
       </button>
+      <!-- PARAMÈTRES ÉTUDIANT (slide depuis droite) -->
+  <div class="student-settings-panel" id="student-settings-panel">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <button class="advanced-filter-btn" onclick="closeStudentSettings()"><i class="fa-solid fa-arrow-left"></i></button>
+      <div style="font-size:18px;font-weight:900;color:var(--text);">Paramètres étudiant</div>
+    </div>
+    <div id="student-settings-content"></div>
+  </div>
     </div>
 
     <!-- Vue Programme -->
@@ -661,18 +656,26 @@
 
   <!-- SCREEN MUSIQUE -->
   <div class="screen" id="screen-music">
+    <!-- BARRE DE RECHERCHE MUSIQUE (descend depuis la topbar, écran Musique uniquement) -->
+  <div class="music-topbar-search" id="music-topbar-search">
+    <div class="music-search-wrap" style="margin-bottom:0;">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" class="music-search-input" id="music-topbar-search-input" placeholder="Rechercher un titre ou un artiste" oninput="onMusicSearchInput(this.value)" />
+    </div>
+  </div>
     <div class="music-sort-icons">
       <button class="music-sort-icon-btn active" id="music-sort-btn" onclick="cycleMusicSort()" title="Trier"><i class="fa-solid fa-circle"></i></button>
     </div>
 
     <input type="file" id="music-upload-input" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac" multiple style="display:none" onchange="handleMusicUpload(event)" />
     <div id="my-music-list"></div>
-  </div>
-
-  <!-- Bouton flottant : ajouter de la musique (écran Musique uniquement) -->
+     <!-- Bouton flottant : ajouter de la musique (écran Musique uniquement) -->
   <div class="music-fab" id="music-fab" style="display:none;" onclick="document.getElementById('music-upload-input').click()">
     <i class="fa-solid fa-plus"></i>
   </div>
+  </div>
+
+ 
 
   <!-- Barre persistante au-dessus du footbar (écran Musique uniquement, morceau chargé) -->
   <div class="music-bottom-bar" id="music-bottom-bar" onclick="musicBottomBarInteract()">
