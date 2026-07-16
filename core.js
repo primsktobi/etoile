@@ -182,6 +182,11 @@ window.queueGet     = queueGet;
 //  State
 let currentUser = null;
 let userProfile = {};
+// Dernier uid connecté avec succès sur cet appareil — stocké hors IDB (localStorage,
+// synchrone) pour pouvoir démarrer l'app en mode dégradé avant même que IDB/Firebase
+// aient répondu. Ne contient aucune donnée sensible, juste un identifiant technique.
+const LAST_UID_KEY = 'trivo_last_uid';
+let offlineDegradedMode = false;
 let tasks = [];
 let tasksUnsub = null;
 let memos = [];
@@ -247,10 +252,12 @@ function runBoot() {
   onAuthStateChanged(auth, async user => {
     if (user) {
       currentUser = user;
+      try { localStorage.setItem(LAST_UID_KEY, user.uid); } catch(e) {}
       await loadUserProfile();       // IDB uniquement — instantané
       await loadMyDaySelection();    // IDB uniquement — instantané
       showApp();
       startListeners();
+      hideOfflineDegradedBanner();   // au cas où on était entrés en mode dégradé
       syncUserProfileFromFirebase(); // Firebase — non-bloquant, en arrière-plan
       checkNotifPermission();
       setupFCM();
@@ -279,10 +286,62 @@ function runBoot() {
 })();
 }
 
+
+const BRIDGE_TIMEOUT_MS = 4000;
+
+function showOfflineDegradedBanner() {
+  const wrap = document.getElementById('notif-banner-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <div class="notif-banner offline-banner">
+      <div class="notif-banner-icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+      <div class="notif-banner-text"><strong>Connexion faible</strong><br>Affichage des données locales mise à jour automatique dès que possible.</div>
+    </div>`;
+}
+function hideOfflineDegradedBanner() {
+  if (!offlineDegradedMode) return;
+  offlineDegradedMode = false;
+  const wrap = document.getElementById('notif-banner-wrap');
+  if (wrap) wrap.innerHTML = '';
+}
+
+async function bootOfflineDegraded() {
+  const lastUid = localStorage.getItem(LAST_UID_KEY);
+  if (!lastUid) return; // jamais connecté sur cet appareil : Firebase reste indispensable
+
+  offlineDegradedMode = true;
+  try {
+    [idb, idbQueue] = await Promise.all([openIDB(), openIDBQueue()]);
+    await loadPrefs();
+
+    currentUser = { uid: lastUid }; // objet minimal, complété plus tard par le vrai user Firebase
+    await loadUserProfile();
+    await loadMyDaySelection();
+
+    tasks   = (await idbGetAll('tasks')).filter(t => t.uid === lastUid);
+    myTeams = (await idbGetAll('teams')).filter(t => (t.memberIds || []).includes(lastUid));
+    memos   = (await idbGetAll('memos')).filter(m => m.uid === lastUid);
+
+    showApp();
+    if (typeof renderTaskList === 'function') renderTaskList();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderTeams === 'function') renderTeams();
+    if (typeof renderMemosList === 'function') renderMemosList();
+    if (typeof loadActivityData === 'function') loadActivityData();
+    showOfflineDegradedBanner();
+  } catch (e) {
+    console.error('Boot dégradé:', e);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
 if (window.auth) {
   runBoot();
 } else {
-  window.addEventListener('firebase-bridge-ready', runBoot, { once: true });
+  let bridgeReady = false;
+  window.addEventListener('firebase-bridge-ready', () => { bridgeReady = true; runBoot(); }, { once: true });
+  setTimeout(() => { if (!bridgeReady) bootOfflineDegraded(); }, BRIDGE_TIMEOUT_MS);
 }
 
 // ── Prefs ──────────────────────────────────────────────────
@@ -437,9 +496,11 @@ window.togglePwVisibility = (inputId, btn) => {
 window.openForgotModal = () => {
   const overlay = document.getElementById('forgot-modal-overlay');
   if (!overlay) return;
-  // Pré-remplir avec l'email déjà saisi si dispo
+  // Pré-remplir avec l'email déjà saisi (écran de connexion) ou, à défaut,
+  // l'email du compte actuellement connecté (ouverture depuis les paramètres).
   const loginEmail = document.getElementById('login-email')?.value.trim();
-  if (loginEmail) document.getElementById('forgot-email').value = loginEmail;
+  const prefill = loginEmail || currentUser?.email || userProfile?.email || '';
+  if (prefill) document.getElementById('forgot-email').value = prefill;
   document.getElementById('forgot-error').textContent = '';
   document.getElementById('forgot-success').style.display = 'none';
   overlay.classList.add('open');
@@ -525,6 +586,7 @@ window.confirmLogout = async () => {
 
     await purgeLocalDataOnLogout();
     tasks = []; myTeams = []; memos = [];
+    try { localStorage.removeItem(LAST_UID_KEY); } catch(e) {}
 
     document.getElementById('logout-modal').classList.remove('open');
     await signOut(auth);
@@ -574,6 +636,8 @@ async function loadUserProfile() {
   try {
     const cachedAvatar = await idbGet('prefs', 'avatarBase64');
     if (cachedAvatar?.value) userProfile.photoURL = cachedAvatar.value;
+    const cachedProfile = await idbGet('prefs', 'profileCache');
+    if (cachedProfile?.value) userProfile = { ...cachedProfile.value, ...userProfile };
   } catch(e) {}
 }
 
@@ -596,6 +660,11 @@ async function syncUserProfileFromFirebase() {
       await savePref('settings', settings);
       // Charger la liste de blocage
       userProfile.blocked = data.blocked || [];
+
+      // Cache local minimal du profil (pseudo/username/email) — permet d'afficher
+      // un profil correct au prochain démarrage même si Firebase n'a pas encore
+      // eu le temps de répondre (connexion faible/instable).
+      await savePref('profileCache', { pseudo: data.pseudo || '', username: data.username || '', email: data.email || '' });
 
       // accentColor vit dans settings — on le restaure aussi dans son
       // propre slot prefs pour que loadPrefs() le retrouve aux prochains boots.
@@ -624,7 +693,7 @@ function renderUserUI() {
   const se = document.getElementById('settings-email');
   const bigAv = document.getElementById('settings-avatar-big');
   if (sn) sn.textContent = pseudo;
-  if (se) se.textContent = currentUser?.email || '';
+  if (se) se.textContent = currentUser?.email || userProfile.email || '';
   if (bigAv) {
     bigAv.innerHTML = photoURL
       ? `<img src="${photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`

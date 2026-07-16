@@ -127,8 +127,6 @@
     </div>
   </div>
 
-  
-
   <!-- MINI LECTEUR (dropdown depuis la topbar) -->
   <div class="mini-player-drop" id="mini-player-drop">
     <img id="mini-player-cover" src="" alt="" style="display:none;width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0;margin-right:8px;" />
@@ -379,6 +377,9 @@
 
     <div id="task-list"></div>
     <div id="kanban-board" style="display:none;"></div>
+
+    <!-- FAB (add task) : confiné à screen-tasks -->
+    <button class="fab" id="fab-add" style="display:none" onclick="openTaskModal()">+</button>
   </div>
 
   <!-- SCREEN MÉMOS -->
@@ -387,8 +388,6 @@
     <div class="onboarding-progress" id="onboarding-progress"></div>
     <div id="onboarding-steps-wrap" style="width:100%;max-width:360px;"></div>
   </div>
-
-  
 
   <!-- MODAL AJOUT / MODIFICATION COURS -->
   <div class="modal-overlay" id="student-course-modal">
@@ -438,6 +437,15 @@
 
   <!-- SCREEN ÉTUDIANT -->
   <div class="screen" id="screen-student">
+    <!-- PARAMÈTRES ÉTUDIANT (slide depuis droite, confiné à cet écran) -->
+    <div class="student-settings-panel" id="student-settings-panel">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <button class="advanced-filter-btn" onclick="closeStudentSettings()"><i class="fa-solid fa-arrow-left"></i></button>
+        <div style="font-size:18px;font-weight:900;color:var(--text);">Paramètres étudiant</div>
+      </div>
+      <div id="student-settings-content"></div>
+    </div>
+
     <!-- Onglets -->
     <div style="display:flex;gap:0;margin-bottom:16px;background:var(--bg3);border-radius:14px;padding:3px;">
       <button class="student-tab-btn active" data-tab="schedule" onclick="switchStudentTab('schedule')"
@@ -448,14 +456,6 @@
         style="flex:1;padding:9px;border-radius:11px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text3);transition:all 0.2s;">
         <i class="fa-solid fa-book-open"></i> Matières
       </button>
-      <!-- PARAMÈTRES ÉTUDIANT (slide depuis droite) -->
-  <div class="student-settings-panel" id="student-settings-panel">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-      <button class="advanced-filter-btn" onclick="closeStudentSettings()"><i class="fa-solid fa-arrow-left"></i></button>
-      <div style="font-size:18px;font-weight:900;color:var(--text);">Paramètres étudiant</div>
-    </div>
-    <div id="student-settings-content"></div>
-  </div>
     </div>
 
     <!-- Vue Programme -->
@@ -656,29 +656,28 @@
 
   <!-- SCREEN MUSIQUE -->
   <div class="screen" id="screen-music">
-    <!-- BARRE DE RECHERCHE MUSIQUE (descend depuis la topbar, écran Musique uniquement) -->
-  <div class="music-topbar-search" id="music-topbar-search">
-    <div class="music-search-wrap" style="margin-bottom:0;">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" class="music-search-input" id="music-topbar-search-input" placeholder="Rechercher un titre ou un artiste" oninput="onMusicSearchInput(this.value)" />
+    <!-- BARRE DE RECHERCHE MUSIQUE (descend depuis le haut de l'écran, confinée à screen-music) -->
+    <div class="music-topbar-search" id="music-topbar-search">
+      <div class="music-search-wrap" style="margin-bottom:0;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="music-search-input" id="music-topbar-search-input" placeholder="Rechercher un titre ou un artiste" oninput="onMusicSearchInput(this.value)" />
+      </div>
     </div>
-  </div>
+
     <div class="music-sort-icons">
       <button class="music-sort-icon-btn active" id="music-sort-btn" onclick="cycleMusicSort()" title="Trier"><i class="fa-solid fa-circle"></i></button>
     </div>
 
     <input type="file" id="music-upload-input" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac" multiple style="display:none" onchange="handleMusicUpload(event)" />
     <div id="my-music-list"></div>
-     <!-- Bouton flottant : ajouter de la musique (écran Musique uniquement) -->
-  <div class="music-fab" id="music-fab" style="display:none;" onclick="document.getElementById('music-upload-input').click()">
-    <i class="fa-solid fa-plus"></i>
-  </div>
-  </div>
 
- 
+    <!-- Bouton flottant : ajouter de la musique (confiné à screen-music) -->
+    <div class="music-fab" id="music-fab" style="display:none;" onclick="document.getElementById('music-upload-input').click()">
+      <i class="fa-solid fa-plus"></i>
+    </div>
 
-  <!-- Barre persistante au-dessus du footbar (écran Musique uniquement, morceau chargé) -->
-  <div class="music-bottom-bar" id="music-bottom-bar" onclick="musicBottomBarInteract()">
+    <!-- Barre persistante au-dessus du footbar (confinée à screen-music, morceau chargé) -->
+    <div class="music-bottom-bar" id="music-bottom-bar" onclick="musicBottomBarInteract()">
     <div class="music-bottom-bar-top">
       <div class="music-bottom-bar-cover" id="music-bottom-cover"><i class="fa-solid fa-music"></i></div>
       <div class="music-bottom-bar-info">
@@ -698,6 +697,7 @@
       <button class="music-ctrl-btn" onclick="event.stopPropagation();musicNext();musicBottomBarInteract();" title="Suivant"><i class="fa-solid fa-forward-step"></i></button>
       <button class="music-ctrl-btn" onclick="event.stopPropagation();stopMusicCompletely();" title="Stop"><i class="fa-solid fa-stop"></i></button>
       <button class="music-ctrl-btn" onclick="event.stopPropagation();openMusicQueue();" title="Écouter plusieurs"><i class="fa-solid fa-list-ul"></i></button>
+    </div>
     </div>
   </div>
 
@@ -808,7 +808,7 @@
     </div>
 
     <div style="text-align:center;padding:24px 0 8px;color:var(--text3);font-size:12px;">
-      TRIVO v8.8
+      TRIVO v8.4
     </div>
   </div>
 
@@ -846,9 +846,6 @@
   </nav>
 
 </div>
-
-<!-- FAB (add task) -->
-<button class="fab" id="fab-add" style="display:none" onclick="openTaskModal()">+</button>
 
 <!-- MODAL TÂCHE -->
 <div class="modal-overlay" id="task-modal">
@@ -1070,6 +1067,7 @@
     <div class="modal-title">Déconnexion</div>
     <div class="field-label">Mot de passe</div>
     <input class="field-input" id="logout-password-input" type="password" placeholder="Mot de passe" autocomplete="current-password" />
+    <div class="auth-forgot" style="margin-top:8px;" onclick="closeModal('logout-modal');openForgotModal();">Mot de passe oublié ?</div>
     <div id="logout-error-msg" style="display:none;color:var(--red);font-size:13px;margin-top:8px;"></div>
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn-secondary" id="logout-cancel-btn" onclick="closeModal('logout-modal')">Annuler</button>

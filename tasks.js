@@ -492,6 +492,10 @@ window.confirmDeleteTask = async (id) => {
   await queuePush('delete', 'tasks', id, {});
   if (navigator.onLine) await window.queueFlush();
   showToast('Tâche déplacée dans la corbeille');
+  // Sync : si liée à une révision/session étudiante, supprime aussi le bloc côté Student
+  if (t?.revisionBlockId && t?.studentDay && window.unlinkStudentBlockForTask) {
+    await window.unlinkStudentBlockForTask(t.revisionBlockId, t.studentDay);
+  }
 };
 
 window.duplicateTask = async (id) => {
@@ -882,6 +886,10 @@ window.saveTask = async () => {
     await queuePush('update', 'tasks', taskIdToEdit, data);
     if (navigator.onLine) await window.queueFlush();
     showToast('Tâche modifiée');
+    // Sync : si liée à une révision/session étudiante, répercute horaire/jour côté Student
+    if (updated.revisionBlockId && updated.studentDay && window.syncStudentBlockFromTask) {
+      await window.syncStudentBlockFromTask(updated);
+    }
 
   } else {
     const newId = _genId();
@@ -925,6 +933,10 @@ window.deleteCurrentTask = async () => {
   await queuePush('delete', 'tasks', editingTaskId, {});
   if (navigator.onLine) await window.queueFlush();
   showToast('Tâche déplacée dans la corbeille');
+  // Sync : si liée à une révision/session étudiante, supprime aussi le bloc côté Student
+  if (t?.revisionBlockId && t?.studentDay && window.unlinkStudentBlockForTask) {
+    await window.unlinkStudentBlockForTask(t.revisionBlockId, t.studentDay);
+  }
 };
 
 // ── Alarms ─────────────────────────────────────────────────
