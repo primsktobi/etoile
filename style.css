@@ -906,11 +906,6 @@
       border: 1px solid var(--green);
     }
     .update-banner .notif-banner-btn { background: var(--green); }
-    .offline-banner {
-      background: linear-gradient(135deg, #5a3d0f, #4a2f0a);
-      border: 1px solid #f59e0b;
-    }
-    .offline-banner .notif-banner-icon { color: #f59e0b; }
 
     /* ─── EMPTY STATE ─── */
     .empty-state {
@@ -1039,6 +1034,7 @@
       z-index: 9999;
     }
     .book-3d-wrap {
+      position: absolute; right: 23%;
       width: 160px; height: 130px; perspective: 900px;
     }
     .book-3d {
